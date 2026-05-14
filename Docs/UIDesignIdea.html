@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClinicMateAI MVP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Prompt', sans-serif; }
+        /* Hide scrollbar for clean UI but keep functionality */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <div class="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0">
+        <div class="p-6 flex items-center gap-3 border-b border-slate-100">
+            <div class="bg-teal-600 text-white p-2 rounded-lg">
+                <i data-lucide="bot" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg text-slate-800">ClinicMate<span class="text-teal-600">AI</span></h1>
+                <p class="text-xs text-slate-500">MVP Version</p>
+            </div>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-1 overflow-y-auto" id="nav-menu">
+            <button onclick="switchTab('dashboard')" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors bg-teal-50 text-teal-700 font-medium" data-tab="dashboard">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span class="text-sm">ภาพรวม (Dashboard)</span>
+                </div>
+            </button>
+            <button onclick="switchTab('inbox')" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-slate-600 hover:bg-slate-100 hover:text-slate-900" data-tab="inbox">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="message-square" class="w-5 h-5"></i>
+                    <span class="text-sm">กล่องข้อความ (Inbox)</span>
+                </div>
+                <span class="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">3</span>
+            </button>
+            <button onclick="switchTab('appointments')" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-slate-600 hover:bg-slate-100 hover:text-slate-900" data-tab="appointments">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="calendar" class="w-5 h-5"></i>
+                    <span class="text-sm">ตารางนัดหมาย</span>
+                </div>
+            </button>
+            
+            <div class="pt-4 pb-2">
+                <p class="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">การตั้งค่า (Setup)</p>
+            </div>
+            
+            <button onclick="switchTab('promotions')" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-slate-600 hover:bg-slate-100 hover:text-slate-900" data-tab="promotions">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="tag" class="w-5 h-5"></i>
+                    <span class="text-sm">โปรโมชัน</span>
+                </div>
+            </button>
+            <button onclick="switchTab('aitest')" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-slate-600 hover:bg-slate-100 hover:text-slate-900" data-tab="aitest">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="bot" class="w-5 h-5"></i>
+                    <span class="text-sm">ทดสอบ AI (AI Test)</span>
+                </div>
+            </button>
+            <button onclick="switchTab('settings')" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-slate-600 hover:bg-slate-100 hover:text-slate-900" data-tab="settings">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                    <span class="text-sm">ตั้งค่าคลินิก</span>
+                </div>
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-slate-200">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold">A</div>
+                <div>
+                    <p class="text-sm font-medium">Admin</p>
+                    <p class="text-xs text-slate-500">Demo Clinic</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col h-screen overflow-hidden">
+        <!-- Header -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
+            <h2 id="header-title" class="text-xl font-semibold text-slate-800">ภาพรวมคลินิกประจำวัน</h2>
+            <div class="flex items-center gap-4">
+                <span class="text-sm px-3 py-1 bg-slate-100 text-slate-600 rounded-full border border-slate-200">
+                    แพ็กเกจ: Pro Clinic (AI: 450/8000)
+                </span>
+            </div>
+        </header>
+
+        <!-- Content Area -->
+        <main class="flex-1 overflow-auto bg-slate-50 relative">
+            
+            <!-- Dashboard View -->
+            <div id="tab-dashboard" class="tab-content p-8 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <!-- Metric Card -->
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-sm text-slate-500 mb-1">ลูกค้าใหม่วันนี้</p>
+                                <h3 class="text-3xl font-bold text-slate-800">12</h3>
+                            </div>
+                            <div class="p-2 rounded-lg bg-slate-50 text-blue-500">
+                                <i data-lucide="users" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500">+2 จากเมื่อวาน</p>
+                    </div>
+                    <!-- Metric Card -->
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-sm text-slate-500 mb-1">AI ตอบกลับอัตโนมัติ</p>
+                                <h3 class="text-3xl font-bold text-slate-800">85%</h3>
+                            </div>
+                            <div class="p-2 rounded-lg bg-slate-50 text-teal-500">
+                                <i data-lucide="bot" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500">ประหยัดเวลา 4 ชม.</p>
+                    </div>
+                    <!-- Metric Card Alert -->
+                    <div class="bg-white p-5 rounded-xl border border-rose-200 shadow-rose-50">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-sm text-slate-500 mb-1">ส่งต่อให้แอดมิน (Escalate)</p>
+                                <h3 class="text-3xl font-bold text-slate-800">3</h3>
+                            </div>
+                            <div class="p-2 rounded-lg bg-rose-50 text-rose-500">
+                                <i data-lucide="shield-alert" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-rose-600 font-medium">ต้องการตอบกลับด่วน</p>
+                    </div>
+                    <!-- Metric Card -->
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-sm text-slate-500 mb-1">จองคิวสำเร็จ</p>
+                                <h3 class="text-3xl font-bold text-slate-800">8</h3>
+                            </div>
+                            <div class="p-2 rounded-lg bg-slate-50 text-green-500">
+                                <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500">15,000 ฿ (โดยประมาณ)</p>
+                    </div>
+                </div>
+
+                <!-- Recent Activities -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-slate-200 font-semibold text-slate-800">กิจกรรมล่าสุด</div>
+                    <div class="divide-y divide-slate-100">
+                        <div class="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors">
+                            <span class="text-xs text-slate-400 font-medium w-12">10:42</span>
+                            <div class="w-2 h-2 rounded-full bg-rose-500"></div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-slate-800 text-rose-600">AI ส่งต่อแอดมิน</p>
+                                <p class="text-xs text-slate-500">ลูกค้าพิมพ์คีย์เวิร์ด 'บวมมาก' (Red Flag)</p>
+                            </div>
+                            <button class="text-xs text-teal-600 font-medium hover:underline">ดูรายละเอียด</button>
+                        </div>
+                        <div class="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors">
+                            <span class="text-xs text-slate-400 font-medium w-12">10:15</span>
+                            <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-slate-800 text-green-600">จองคิวสำเร็จ</p>
+                                <p class="text-xs text-slate-500">คุณลูกค้า Demo จองคิว Botox Jaw พรุ่งนี้ 14:00</p>
+                            </div>
+                            <button class="text-xs text-teal-600 font-medium hover:underline">ดูรายละเอียด</button>
+                        </div>
+                        <div class="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors">
+                            <span class="text-xs text-slate-400 font-medium w-12">09:30</span>
+                            <div class="w-2 h-2 rounded-full bg-teal-500"></div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-slate-800 text-teal-600">AI ตอบอัตโนมัติ</p>
+                                <p class="text-xs text-slate-500">ตอบคำถามราคาโปรโมชัน Botox ให้ลูกค้า 3 ราย</p>
+                            </div>
+                            <button class="text-xs text-teal-600 font-medium hover:underline">ดูรายละเอียด</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inbox View -->
+            <div id="tab-inbox" class="tab-content hidden h-full">
+                <div class="flex h-full bg-white">
+                    <!-- Left: Chat List -->
+                    <div class="w-80 border-r border-slate-200 flex flex-col bg-slate-50/50 shrink-0">
+                        <div class="p-4 border-b border-slate-200">
+                            <div class="relative">
+                                <i data-lucide="search" class="absolute left-3 top-2.5 text-slate-400 w-4 h-4"></i>
+                                <input type="text" placeholder="ค้นหาลูกค้า..." class="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-teal-500">
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto">
+                            <!-- Chat Item -->
+                            <div class="p-4 border-b border-slate-100 cursor-pointer transition-colors bg-white border-l-4 border-l-teal-500">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4 class="font-semibold text-sm text-slate-800 flex items-center gap-1">
+                                        <i data-lucide="smartphone" class="w-3.5 h-3.5 text-green-500"></i> คุณลูกค้า Demo
+                                    </h4>
+                                    <span class="text-[10px] text-slate-400">10:42</span>
+                                </div>
+                                <p class="text-xs text-slate-500 truncate mb-2">ฉีดแล้วบวมมากเลยค่ะ ทำยังไงดี</p>
+                                <div class="flex gap-1">
+                                    <span class="px-2 py-0.5 bg-rose-100 text-rose-700 text-[10px] rounded-full font-medium">รอแอดมินตอบ</span>
+                                </div>
+                            </div>
+                            <!-- Chat Item -->
+                            <div class="p-4 border-b border-slate-100 cursor-pointer transition-colors hover:bg-slate-100 border-l-4 border-l-transparent">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4 class="font-semibold text-sm text-slate-800 flex items-center gap-1">
+                                        <i data-lucide="facebook" class="w-3.5 h-3.5 text-blue-500"></i> สมหญิง สวยเสมอ
+                                    </h4>
+                                    <span class="text-[10px] text-slate-400">09:15</span>
+                                </div>
+                                <p class="text-xs text-slate-500 truncate mb-2">โปรเดือนนี้มีอะไรบ้างคะ</p>
+                                <div class="flex gap-1">
+                                    <span class="px-2 py-0.5 bg-teal-100 text-teal-700 text-[10px] rounded-full font-medium">AI ตอบแล้ว</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Center: Thread -->
+                    <div class="flex-1 flex flex-col">
+                        <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
+                                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Demo" alt="avatar">
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-slate-800">คุณลูกค้า Demo</h3>
+                                    <p class="text-xs text-slate-500 flex items-center gap-1">
+                                        <span class="w-2 h-2 rounded-full bg-green-500"></span> Online
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="px-3 py-1.5 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700">จองคิวให้ลูกค้า</button>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50">
+                            <!-- User Msg -->
+                            <div class="flex flex-col items-end">
+                                <div class="max-w-[70%] rounded-2xl px-4 py-2 text-sm bg-teal-600 text-white rounded-tr-sm">
+                                    <p>โบท็อกกรามเท่าไรคะ</p>
+                                </div>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-[10px] text-slate-400">10:00</span>
+                                </div>
+                            </div>
+                            <!-- AI Msg -->
+                            <div class="flex flex-col items-start">
+                                <div class="max-w-[70%] rounded-2xl px-4 py-2 text-sm bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm">
+                                    <p>โบท็อกกรามเริ่มต้นที่ 2,999 บาทค่ะคุณลูกค้า ราคาจะขึ้นอยู่กับยี่ห้อและจำนวนยูนิตที่เหมาะสม แนะนำให้คุณหมอประเมินก่อนนะคะ คุณลูกค้าเคยฉีดโบท็อกมาก่อนหรือยังคะ?</p>
+                                </div>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-[10px] text-slate-400">10:00</span>
+                                    <span class="flex items-center gap-1 text-[10px] text-teal-600 font-medium">
+                                        <i data-lucide="bot" class="w-3 h-3"></i> ตอบโดย AI
+                                    </span>
+                                </div>
+                            </div>
+                            <!-- User Msg -->
+                            <div class="flex flex-col items-end">
+                                <div class="max-w-[70%] rounded-2xl px-4 py-2 text-sm bg-teal-600 text-white rounded-tr-sm">
+                                    <p>เพิ่งเคยฉีดครั้งแรกค่ะ แต่ตอนนี้รู้สึกฉีดแล้วบวมมากเลยค่ะ ทำยังไงดีคะ</p>
+                                </div>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-[10px] text-slate-400">10:42</span>
+                                </div>
+                            </div>
+                            
+                            <!-- AI System Alert -->
+                            <div class="flex justify-center my-4">
+                                <div class="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm shadow-sm">
+                                    <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                                    <span>AI ตรวจพบ Red Flag Keyword: <b>"บวมมาก"</b> - ส่งต่อให้แอดมินดูแลแล้ว</span>
+                                </div>
+                            </div>
+
+                            <!-- AI Escalate Msg -->
+                            <div class="flex flex-col items-start">
+                                <div class="max-w-[70%] rounded-2xl px-4 py-2 text-sm bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm">
+                                    <p>อาการนี้ควรให้เจ้าหน้าที่หรือคุณหมอประเมินโดยตรงนะคะคุณลูกค้า เดี๋ยวส่งเรื่องให้แอดมินดูแลต่อทันทีค่ะ</p>
+                                </div>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-[10px] text-slate-400">10:42</span>
+                                    <span class="flex items-center gap-1 text-[10px] text-rose-500 font-medium">
+                                        <i data-lucide="bot" class="w-3 h-3"></i> AI ตอบ (โหมด Escalate)
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-white border-t border-slate-200 shrink-0">
+                            <div class="flex items-center gap-2">
+                                <button class="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100">
+                                    <i data-lucide="plus" class="w-5 h-5"></i>
+                                </button>
+                                <input type="text" placeholder="พิมพ์ข้อความตอบกลับในฐานะแอดมิน..." class="flex-1 bg-slate-100 border-transparent focus:bg-white focus:border-teal-500 rounded-full px-4 py-2.5 text-sm outline-none border transition-all">
+                                <button class="p-2.5 bg-teal-600 text-white rounded-full hover:bg-teal-700 flex items-center justify-center">
+                                    <i data-lucide="send" class="w-4 h-4 ml-1"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Info Panel -->
+                    <div class="w-72 border-l border-slate-200 bg-white p-6 overflow-y-auto shrink-0">
+                        <h3 class="font-semibold text-slate-800 mb-4">ข้อมูลการวิเคราะห์ (AI)</h3>
+                        
+                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs text-slate-500 font-medium">โหมดตอบกลับปัจจุบัน</span>
+                                <span class="px-2 py-0.5 bg-rose-100 text-rose-700 text-[10px] font-bold rounded">Escalate</span>
+                            </div>
+                            <div class="space-y-2 mt-3">
+                                <div class="flex items-center justify-between text-sm">
+                                    <span class="text-slate-600">ความมั่นใจ AI</span>
+                                    <span class="font-medium text-teal-600">85%</span>
+                                </div>
+                                <div class="flex items-center justify-between text-sm">
+                                    <span class="text-slate-600">Intent</span>
+                                    <span class="font-medium text-slate-800">ปรึกษาผลข้างเคียง</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="font-semibold text-slate-800 mb-4">ข้อมูลลูกค้า</h3>
+                        <div class="space-y-3 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Channel</span>
+                                <span class="flex items-center gap-1 text-green-600 font-medium">
+                                    <i data-lucide="smartphone" class="w-3.5 h-3.5"></i> LINE OA
+                                </span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Tag</span>
+                                <span class="text-slate-800">ลูกค้าใหม่</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">นัดหมาย</span>
+                                <span class="text-slate-800">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Test View -->
+            <div id="tab-aitest" class="tab-content hidden h-full p-6 gap-6 flex">
+                <!-- Phone Simulator -->
+                <div class="w-[350px] bg-white rounded-[2rem] border-8 border-slate-800 overflow-hidden flex flex-col shadow-xl shrink-0">
+                    <div class="bg-slate-800 text-white text-center py-2 text-sm font-medium">จำลองหน้าจอลูกค้า</div>
+                    <div class="flex-1 bg-slate-50 p-4 overflow-y-auto space-y-4 no-scrollbar" id="simulator-chat">
+                        <!-- Initial AI Message -->
+                        <div class="flex flex-col items-start">
+                            <div class="max-w-[85%] rounded-2xl px-4 py-2 text-sm bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm">
+                                <p>สวัสดีค่ะ Demo Clinic ยินดีให้บริการค่ะ สนใจสอบถามบริการด้านไหนคะ?</p>
+                            </div>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-[10px] text-slate-400">Now</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-white border-t border-slate-200 flex gap-2">
+                        <input type="text" id="ai-input" placeholder="ลองพิมพ์ 'บวมมาก' หรือ 'โบท็อกราคา'" onkeydown="if(event.key === 'Enter') sendTestMessage()" class="flex-1 bg-slate-100 rounded-full px-4 text-sm focus:outline-none">
+                        <button onclick="sendTestMessage()" class="p-2 bg-teal-600 text-white rounded-full hover:bg-teal-700 transition-colors">
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Analysis Engine Logic panel -->
+                <div class="flex-1 space-y-6">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                            <i data-lucide="bot" class="text-teal-600 w-5 h-5"></i> AI Safety Decision Engine (Logs)
+                        </h3>
+                        <p class="text-sm text-slate-500 mb-6">จำลองกระบวนการคิดของ `AiReceptionistOrchestrator` ก่อนตอบกลับ</p>
+
+                        <div id="ai-analysis-panel">
+                            <!-- Default Empty State -->
+                            <div class="h-40 flex items-center justify-center border-2 border-dashed border-slate-200 rounded-lg text-slate-400 text-sm">
+                                ส่งข้อความในกล่องจำลองด้านซ้ายเพื่อดูผลวิเคราะห์
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Safety Rules hint -->
+                    <div class="bg-slate-800 text-slate-300 p-6 rounded-xl text-sm">
+                        <h4 class="text-white font-semibold mb-3 flex items-center gap-2"><i data-lucide="settings" class="w-4 h-4"></i> กฎ (Rules) ที่ใช้ใน MVP</h4>
+                        <ul class="list-disc list-inside space-y-1">
+                            <li>ถ้ามี red flag (เช่น แพ้, บวม, หนอง) = <b class="text-rose-400">Escalate</b> เสมอ</li>
+                            <li>ถ้าถามราคาบริการที่มีในระบบ = <b class="text-teal-400">AutoReply</b></li>
+                            <li>ถ้าถามกว้างๆ และ AI ไม่แน่ใจ (&lt; 70% confidence) = <b class="text-amber-400">DraftForStaff</b></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Promotions View -->
+            <div id="tab-promotions" class="tab-content hidden p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-slate-800">จัดการโปรโมชัน (Promotions)</h3>
+                    <button class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors">
+                        <i data-lucide="plus" class="w-4 h-4"></i> สร้างโปรโมชันใหม่
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 text-sm">
+                                <th class="p-4 font-medium">ชื่อโปรโมชัน</th>
+                                <th class="p-4 font-medium">บริการ (Service)</th>
+                                <th class="p-4 font-medium">ระยะเวลา</th>
+                                <th class="p-4 font-medium">สถานะ (Status)</th>
+                                <th class="p-4 font-medium text-right">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm">
+                            <tr class="hover:bg-slate-50 transition-colors">
+                                <td class="p-4 font-medium text-slate-800">Botox Jaw New Customer</td>
+                                <td class="p-4 text-slate-600">Botox กราม</td>
+                                <td class="p-4 text-slate-600">พ.ค. 2026 - มิ.ย. 2026</td>
+                                <td class="p-4">
+                                    <span class="bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-xs font-semibold">Published</span>
+                                </td>
+                                <td class="p-4 text-right">
+                                    <button class="text-teal-600 hover:text-teal-800 font-medium">แก้ไข</button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-50 transition-colors">
+                                <td class="p-4 font-medium text-slate-800">ลด 50% Filler ใต้ตา</td>
+                                <td class="p-4 text-slate-600">Filler ใต้ตา</td>
+                                <td class="p-4 text-slate-600">-</td>
+                                <td class="p-4">
+                                    <span class="bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full text-xs font-semibold">Draft</span>
+                                </td>
+                                <td class="p-4 text-right">
+                                    <button class="text-teal-600 hover:text-teal-800 font-medium">แก้ไข</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-500">
+                        * AI จะใช้ข้อมูลเพื่อตอบลูกค้าเฉพาะโปรโมชันที่มีสถานะ <b>Published</b> และอยู่ในช่วงระยะเวลาเท่านั้น (ตาม Task 3)
+                    </div>
+                </div>
+            </div>
+
+            <!-- Placeholder for Development Views (Appointments, Settings) -->
+            <div id="tab-dev-placeholder" class="tab-content hidden p-8 h-full flex flex-col items-center justify-center text-center text-slate-500">
+                <i data-lucide="settings" class="w-12 h-12 mb-4 text-slate-300"></i>
+                <p>หน้านี้กำลังอยู่ในระหว่างการพัฒนา (ตามแผน Milestone 5-6)</p>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Title mapping for tabs
+        const tabTitles = {
+            'dashboard': 'ภาพรวมคลินิกประจำวัน',
+            'inbox': 'ระบบตอบกลับและดูแลลูกค้า',
+            'appointments': 'ตารางนัดหมาย',
+            'promotions': 'จัดการโปรโมชัน',
+            'aitest': 'AI Safety & Test Simulator',
+            'settings': 'การตั้งค่าระบบ'
+        };
+
+        // Tab Switching Logic
+        function switchTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.add('hidden');
+            });
+
+            // Reset Nav styling
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-teal-50', 'text-teal-700', 'font-medium');
+                btn.classList.add('text-slate-600', 'hover:bg-slate-100', 'hover:text-slate-900');
+            });
+
+            // Set Active Nav Styling
+            const activeBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-600', 'hover:bg-slate-100', 'hover:text-slate-900');
+                activeBtn.classList.add('bg-teal-50', 'text-teal-700', 'font-medium');
+            }
+
+            // Update Header Title
+            document.getElementById('header-title').innerText = tabTitles[tabId] || '';
+
+            // Show selected tab (handle missing placeholder logic)
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            if (targetTab) {
+                targetTab.classList.remove('hidden');
+            } else {
+                // If it's appointments or settings, show placeholder
+                document.getElementById('tab-dev-placeholder').classList.remove('hidden');
+            }
+        }
+
+        // --- AI Test Simulator Logic ---
+        
+        function appendUserMessage(text) {
+            const chatBox = document.getElementById('simulator-chat');
+            const html = `
+                <div class="flex flex-col items-end">
+                    <div class="max-w-[85%] rounded-2xl px-4 py-2 text-sm bg-teal-600 text-white rounded-tr-sm">
+                        <p>${text}</p>
+                    </div>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-[10px] text-slate-400">Now</span>
+                    </div>
+                </div>
+            `;
+            chatBox.insertAdjacentHTML('beforeend', html);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function appendAIMessage(text, status) {
+            const chatBox = document.getElementById('simulator-chat');
+            
+            let statusHtml = '';
+            if (status === 'auto') {
+                statusHtml = `<span class="flex items-center gap-1 text-[10px] text-teal-600 font-medium"><i data-lucide="bot" class="w-3 h-3"></i> ตอบโดย AI</span>`;
+            } else if (status === 'escalated') {
+                statusHtml = `<span class="flex items-center gap-1 text-[10px] text-rose-500 font-medium"><i data-lucide="bot" class="w-3 h-3"></i> AI ตอบ (โหมด Escalate)</span>`;
+            } else if (status === 'draft') {
+                statusHtml = `<span class="flex items-center gap-1 text-[10px] text-amber-600 font-medium"><i data-lucide="bot" class="w-3 h-3"></i> AI ร่างคำตอบ</span>`;
+            }
+
+            const html = `
+                <div class="flex flex-col items-start">
+                    <div class="max-w-[85%] rounded-2xl px-4 py-2 text-sm bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm">
+                        <p>${text}</p>
+                    </div>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-[10px] text-slate-400">Now</span>
+                        ${statusHtml}
+                    </div>
+                </div>
+            `;
+            chatBox.insertAdjacentHTML('beforeend', html);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            lucide.createIcons(); // Re-initialize icons for newly added elements
+        }
+
+        function updateAnalysisPanel(mode, confidence, reason, flags) {
+            const panel = document.getElementById('ai-analysis-panel');
+            
+            let modeColor = 'text-amber-600';
+            if (mode === 'Escalate') modeColor = 'text-rose-600';
+            if (mode === 'AutoReply') modeColor = 'text-teal-600';
+
+            let flagsHtml = '';
+            if (flags.length > 0) {
+                flagsHtml = `
+                    <div class="bg-rose-50 p-4 rounded-lg border border-rose-200 text-rose-800 mt-4">
+                        <p class="text-xs font-bold mb-2 flex items-center gap-1">
+                            <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i> Red Flag Detector Triggered
+                        </p>
+                        <p class="text-sm">ตรวจพบคำห้าม: <b>${flags.join(', ')}</b></p>
+                    </div>
+                `;
+            }
+
+            const html = `
+                <div class="space-y-4 animate-fade-in">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <p class="text-xs text-slate-500 mb-1">Decision Mode</p>
+                            <p class="font-bold text-lg ${modeColor}">${mode}</p>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <p class="text-xs text-slate-500 mb-1">Confidence Score</p>
+                            <p class="font-bold text-lg text-slate-800">${confidence}</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                        <p class="text-xs text-slate-500 mb-1">Reasoning (เหตุผลที่ตัดสินใจ)</p>
+                        <p class="text-sm text-slate-800">${reason}</p>
+                    </div>
+                    
+                    ${flagsHtml}
+                </div>
+            `;
+            panel.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        function sendTestMessage() {
+            const inputEl = document.getElementById('ai-input');
+            const text = inputEl.value.trim();
+            if (!text) return;
+
+            // 1. Add User message
+            appendUserMessage(text);
+            inputEl.value = '';
+
+            // 2. Simulate Delay and AI Logic
+            setTimeout(() => {
+                let redFlagDetected = false;
+                const redFlags = ['แพ้', 'หายใจไม่ออก', 'บวมมาก', 'ปวดมาก', 'มีไข้', 'หนอง', 'ติดเชื้อ', 'หน้าชา', 'ตามัว', 'เลือดออก', 'ฟิลเลอร์ไหล', 'ขอคืนเงิน', 'ร้องเรียน'];
+                
+                const foundFlags = redFlags.filter(flag => text.includes(flag));
+                if (foundFlags.length > 0) redFlagDetected = true;
+
+                let mode, confidence, reason, aiReply, aiStatus;
+
+                if (redFlagDetected) {
+                    mode = 'Escalate';
+                    confidence = '95%';
+                    reason = 'ตรวจพบคำเสี่ยงด้านความปลอดภัย/ข้อร้องเรียน';
+                    aiReply = 'อาการนี้ควรให้เจ้าหน้าที่หรือคุณหมอประเมินโดยตรงนะคะคุณลูกค้า เดี๋ยวส่งเรื่องให้แอดมินดูแลต่อทันทีค่ะ';
+                    aiStatus = 'escalated';
+                } else if (text.includes('ราคา') || text.includes('เท่าไร') || text.includes('โบท็อก')) {
+                    mode = 'AutoReply';
+                    confidence = '92%';
+                    reason = 'พบข้อมูลในฐานข้อมูล Approved Data (โปรโมชัน Botox)';
+                    aiReply = 'โบท็อกกรามเริ่มต้นที่ 2,999 บาทค่ะคุณลูกค้า ราคาจะขึ้นอยู่กับยี่ห้อและจำนวนยูนิตที่เหมาะสม แนะนำให้คุณหมอประเมินก่อนนะคะ';
+                    aiStatus = 'auto';
+                } else {
+                    mode = 'DraftForStaff';
+                    confidence = '65%';
+                    reason = 'คำถามไม่ตรงกับ Approved Data ค่อนข้างเฉพาะเจาะจง';
+                    aiReply = '(Draft) ปกติคลินิกเราจะใช้เข็มขนาดเล็กพิเศษค่ะคุณลูกค้า แต่เพื่อความชัวร์เดี๋ยวให้แอดมินคอนเฟิร์มอีกทีนะคะ';
+                    aiStatus = 'draft';
+                }
+
+                // 3. Add AI message
+                appendAIMessage(aiReply, aiStatus);
+
+                // 4. Update Analysis Panel
+                updateAnalysisPanel(mode, confidence, reason, foundFlags);
+
+            }, 600);
+        }
+    </script>
+</body>
+</html>

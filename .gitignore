@@ -1,0 +1,18 @@
+# Local agent/session files
+.superpowers/
+
+# .NET build output
+bin/
+obj/
+
+# Local databases and logs
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+# User/editor files
+.vs/
+.vscode/
+*.user
+*.suo

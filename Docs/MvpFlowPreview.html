@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ClinicMateAI MVP Flow Preview</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: #17202a;
+      background: #f5f7fb;
+    }
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 32px 20px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+    p {
+      line-height: 1.5;
+    }
+    .subtitle {
+      color: #5b6777;
+      margin-bottom: 24px;
+    }
+    .panel {
+      background: #fff;
+      border: 1px solid #d9e0ea;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #d9e0ea;
+      font-weight: 700;
+      background: #eef3f8;
+    }
+    .panel-body {
+      padding: 18px;
+    }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+    .step,
+    .box {
+      border: 1px solid #d9e0ea;
+      background: #f8fafc;
+      border-radius: 6px;
+      padding: 12px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1.6fr;
+      gap: 16px;
+    }
+    .workspace {
+      display: grid;
+      grid-template-columns: 180px 1fr 260px;
+      gap: 14px;
+      min-height: 260px;
+    }
+    .sidebar {
+      background: #17202a;
+      color: #fff;
+      border-radius: 6px;
+      padding: 14px;
+      line-height: 2;
+      font-size: 14px;
+    }
+    .button {
+      display: inline-block;
+      background: #0f766e;
+      color: #fff;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-top: 8px;
+      font-weight: 700;
+    }
+    @media (max-width: 820px) {
+      .steps,
+      .grid,
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>ClinicMateAI MVP Flow</h1>
+    <p class="subtitle">A working app for beauty clinics, designed so clinic staff can set it up without technical steps.</p>
+
+    <section class="panel">
+      <div class="panel-header">Clinic setup wizard</div>
+      <div class="panel-body">
+        <div class="steps">
+          <div class="step">1 Clinic</div>
+          <div class="step">2 Services</div>
+          <div class="step">3 Promotions</div>
+          <div class="step">4 Booking</div>
+          <div class="step">5 Safety</div>
+          <div class="step">6 Test AI</div>
+        </div>
+        <div class="grid">
+          <div>
+            <h2>Plain-language setup</h2>
+            <p>Staff enter normal clinic info: opening hours, prices, promos, deposit rule, doctor schedule, and approved answers.</p>
+            <p>No prompt writing. The app turns this into AI behavior behind the scenes.</p>
+          </div>
+          <div class="box">
+            <strong>Example setup card</strong><br><br>
+            Service: Botox jaw<br>
+            Starting price: 2,999 THB<br>
+            Doctor assessment: Required<br>
+            AI may say: price depends on brand/unit<br>
+            AI must not say: guaranteed result
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">Daily staff workspace</div>
+      <div class="panel-body">
+        <div class="workspace">
+          <div class="sidebar">
+            Dashboard<br>Inbox<br>Appointments<br>Services<br>Promotions<br>AI Settings<br>Integrations
+          </div>
+          <div class="box">
+            <h2>Unified inbox</h2>
+            <p>LINE and Facebook messages appear in one place. AI replies automatically when the answer is approved and safe.</p>
+            <div class="box">Customer: Botox jaw price?</div>
+            <div class="box">AI: Starts at 2,999 THB, depends on brand/unit. Would you like a free assessment booking?</div>
+          </div>
+          <div class="box">
+            <h2>Safety panel</h2>
+            <p>Low confidence, missing info, complaints, and medical red flags become staff handoff tasks.</p>
+            <span class="button">Approve draft</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
