@@ -129,6 +129,37 @@ public class InboxQueryHandlersTests
             _items.Add(clinic);
             return Task.CompletedTask;
         }
+
+        public Task UpdateAsync(Clinic clinic, CancellationToken cancellationToken = default)
+        {
+            var index = _items.FindIndex(x => x.Id == clinic.Id);
+            if (index >= 0)
+            {
+                _items[index] = clinic;
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task<(IReadOnlyList<Clinic> Items, int TotalCount)> SearchAsync(
+            string? name,
+            DateTime? createdFromUtc,
+            DateTime? createdToExclusiveUtc,
+            string? status,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            var query = _items.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                query = query.Where(x => x.Name.Contains(name, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var filtered = query.ToList();
+            var paged = filtered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            return Task.FromResult(((IReadOnlyList<Clinic>)paged, filtered.Count));
+        }
     }
 
     private sealed class FakeConversationRepository : IConversationRepository

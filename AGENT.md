@@ -136,6 +136,10 @@ Implementation requirements:
 - Keep reusable UI parts in focused components such as metric tiles, badges, conversation list, conversation thread, and safety panels.
 - Text must fit in cards/buttons across desktop and mobile.
 - Avoid nested cards and decorative marketing sections.
+- For all forms, mark required fields with a visible `*` in the label text. Optional fields should not use `(Optional)` suffix unless explicitly required by product copy.
+- Required fields must have client-side validation feedback before submit and must block submit when missing or invalid.
+- Optional fields may be left blank without showing validation errors.
+- For form helper text or tooltip text, use Thai as the default language and explain the field purpose in clear operational terms.
 
 ## AI Safety Rules
 

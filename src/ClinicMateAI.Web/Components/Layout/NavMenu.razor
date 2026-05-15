@@ -1,75 +1,43 @@
-﻿@implements IDisposable
-
+@implements IDisposable
 @inject NavigationManager NavigationManager
 
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">ClinicMateAI.Web</a>
+<div class="menu-header">
+    <div class="menu-logo">CM</div>
+    <div>
+        <div class="menu-title">ClinicMateAI</div>
+        <div class="menu-subtitle">MVP Dashboard</div>
     </div>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+<button class="navbar-toggler" type="button" title="Toggle navigation" @onclick="ToggleMenu">
+    <span></span>
+    <span></span>
+    <span></span>
+</button>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="inbox">
-                <span class="bi bi-chat-dots-nav-menu" aria-hidden="true"></span> Inbox
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="auth">
-                <span class="bi bi-lock-nav-menu" aria-hidden="true"></span> Auth Required
-            </NavLink>
-        </div>
+<div class="nav-scrollable @(isMenuOpen ? "open" : string.Empty)">
+    <nav class="nav-list">
+        <NavLink class="nav-link" href="" Match="NavLinkMatch.All">ภาพรวม</NavLink>
+        <NavLink class="nav-link" href="clinics">จัดการคลินิก</NavLink>
+        <NavLink class="nav-link" href="setup">ตั้งค่าคลินิก</NavLink>
+        <NavLink class="nav-link" href="inbox">กล่องข้อความ</NavLink>
+        <NavLink class="nav-link" href="appointments">ตารางนัดหมาย</NavLink>
+        <NavLink class="nav-link" href="promotions">โปรโมชัน</NavLink>
+        <NavLink class="nav-link" href="ai-test">ทดสอบ AI</NavLink>
+        <NavLink class="nav-link" href="integrations">การเชื่อมต่อ</NavLink>
+        <NavLink class="nav-link" href="platform-admin">ผู้ดูแลแพลตฟอร์ม</NavLink>
 
         <AuthorizeView>
             <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="Account/Manage">
-                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> @context.User.Identity?.Name
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <form action="Account/Logout" method="post">
-                        <AntiforgeryToken />
-                        <input type="hidden" name="ReturnUrl" value="@currentUrl" />
-                        <button type="submit" class="nav-link">
-                            <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
-                        </button>
-                    </form>
-                </div>
+                <NavLink class="nav-link user-link" href="Account/Manage">@context.User.Identity?.Name</NavLink>
+                <form action="Account/Logout" method="post" class="logout-form">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                    <button type="submit" class="nav-link logout-button">ออกจากระบบ</button>
+                </form>
             </Authorized>
             <NotAuthorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="Account/Register">
-                        <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Register
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="Account/Login">
-                        <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Login
-                    </NavLink>
-                </div>
+                <NavLink class="nav-link user-link" href="Account/Login">เข้าสู่ระบบ</NavLink>
             </NotAuthorized>
         </AuthorizeView>
     </nav>
@@ -77,6 +45,7 @@
 
 @code {
     private string? currentUrl;
+    private bool isMenuOpen;
 
     protected override void OnInitialized()
     {
@@ -87,7 +56,13 @@
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        isMenuOpen = false;
         StateHasChanged();
+    }
+
+    private void ToggleMenu()
+    {
+        isMenuOpen = !isMenuOpen;
     }
 
     public void Dispose()
@@ -95,4 +70,3 @@
         NavigationManager.LocationChanged -= OnLocationChanged;
     }
 }
-

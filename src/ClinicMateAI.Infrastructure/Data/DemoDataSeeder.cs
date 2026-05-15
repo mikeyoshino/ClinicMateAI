@@ -18,6 +18,8 @@ public static class DemoDataSeeder
         var clinic = new Clinic
         {
             Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            CreatedAtUtc = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc),
+            Status = ClinicStatus.Active,
             Name = "Demo Aesthetic Clinic",
             Address = "Bangkok",
             Phone = "02-000-0000",
@@ -56,6 +58,18 @@ public static class DemoDataSeeder
             Conditions = "เฉพาะลูกค้าใหม่ ต้องจองล่วงหน้า",
             ApprovedAiWording = "ตอนนี้มีโปรโบท็อกกรามสำหรับคุณลูกค้าใหม่ เริ่มต้น 2,999 บาทค่ะ",
             Status = PromotionStatus.Published
+        });
+        db.Promotions.Add(new Promotion
+        {
+            ClinicId = clinic.Id,
+            Name = "Laser Bright Draft",
+            RelatedServiceName = "Laser",
+            PromoPrice = 1990,
+            StartsOn = new DateOnly(2026, 6, 1),
+            EndsOn = new DateOnly(2026, 6, 30),
+            Conditions = "Draft promotion for review",
+            ApprovedAiWording = "Draft wording",
+            Status = PromotionStatus.Draft
         });
         db.Conversations.Add(conversation);
         db.Messages.Add(new Message

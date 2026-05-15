@@ -80,6 +80,7 @@ public class WebhookEndpointsTests
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            builder.UseSetting("Logging:EventLog:LogLevel:Default", "None");
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<DbContextOptions<AppDbContext>>();

@@ -1,0 +1,32 @@
+@page "/ai-test"
+
+<PageTitle>AI Test</PageTitle>
+
+<section class="cm-grid">
+    <article class="cm-panel">
+        <header class="cm-panel-header">จำลองคำถามลูกค้า</header>
+        <div class="p-3">
+            <label for="testInput" class="form-label">ข้อความลูกค้า</label>
+            <textarea id="testInput" class="form-control" rows="4">โบท็อกกรามราคาเท่าไรคะ</textarea>
+            <button class="btn btn-primary btn-sm mt-3">ทดสอบการตอบ</button>
+        </div>
+    </article>
+
+    <article class="cm-panel">
+        <header class="cm-panel-header">ผลลัพธ์จาก AI</header>
+        <div class="p-3">
+            <p class="mb-1"><strong>โหมด:</strong> Auto Reply</p>
+            <p class="mb-1"><strong>ความมั่นใจ:</strong> 0.89</p>
+            <p class="mb-0">โบท็อกกรามเริ่มต้นที่ 2,999 บาทค่ะคุณลูกค้า สนใจเข้ามาประเมินกับคุณหมอก่อนไหมคะ?</p>
+        </div>
+    </article>
+
+    <article class="cm-panel">
+        <header class="cm-panel-header">Safety Decision Log</header>
+        <ul class="cm-activity">
+            <li><strong>Rule</strong><span>No red flag keyword found.</span></li>
+            <li><strong>Promo</strong><span>Matched published promotion: Botox Jaw ลูกค้าใหม่.</span></li>
+            <li><strong>Action</strong><span>Auto reply approved.</span></li>
+        </ul>
+    </article>
+</section>

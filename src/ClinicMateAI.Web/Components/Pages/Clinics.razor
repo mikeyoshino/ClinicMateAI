@@ -1,0 +1,89 @@
+@page "/clinics"
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@inject ClinicMateAI.Web.Services.ToastService ToastService
+@using Microsoft.AspNetCore.WebUtilities
+
+<PageTitle>จัดการคลินิก</PageTitle>
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h5 class="mb-0">จัดการคลินิก</h5>
+    <a id="btn-go-create-clinic" class="btn btn-primary" href="/clinics/create">+ สร้างคลินิก</a>
+</div>
+
+<ClinicListTable
+    Items="Items"
+    TotalCount="TotalCount"
+    Page="Page"
+    PageSize="PageSize"
+    OnFilterChanged="LoadClinicsAsync"
+    OnOpenSetup="OpenSetupAsync" />
+
+@code {
+    private IReadOnlyList<ClinicListTable.ClinicListItemVm> Items { get; set; } = [];
+    private int TotalCount { get; set; }
+    private int Page { get; set; } = 1;
+    private int PageSize { get; set; } = 10;
+    private ClinicListTable.ClinicListFilterVm CurrentFilter { get; set; } = new(null, null, null, null, 1, 10);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClinicsAsync(CurrentFilter);
+    }
+
+    private async Task LoadClinicsAsync(ClinicListTable.ClinicListFilterVm filter)
+    {
+        CurrentFilter = filter;
+        Page = filter.Page;
+        PageSize = filter.PageSize;
+        var query = new Dictionary<string, string?>
+        {
+            ["page"] = filter.Page.ToString(),
+            ["pageSize"] = filter.PageSize.ToString()
+        };
+        if (!string.IsNullOrWhiteSpace(filter.Name)) query["name"] = filter.Name;
+        if (filter.CreatedFrom.HasValue) query["createdFrom"] = filter.CreatedFrom.Value.ToString("yyyy-MM-dd");
+        if (filter.CreatedTo.HasValue) query["createdTo"] = filter.CreatedTo.Value.ToString("yyyy-MM-dd");
+        if (!string.IsNullOrWhiteSpace(filter.Status)) query["status"] = filter.Status;
+
+        var client = HttpClientFactory.CreateClient();
+        var url = QueryHelpers.AddQueryString("/api/clinics", query!);
+        var response = await client.GetAsync(NavigationManager.ToAbsoluteUri(url).ToString());
+        if (!response.IsSuccessStatusCode)
+        {
+            ToastService.Error($"โหลดรายการคลินิกล้มเหลว ({(int)response.StatusCode})");
+            return;
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<ClinicListResponseVm>();
+        Items = result?.Items.Select(x => new ClinicListTable.ClinicListItemVm(x.ClinicId, x.Name, x.Address, x.Phone, x.Status, x.CreatedAtUtc)).ToList()
+            ?? [];
+        TotalCount = result?.TotalCount ?? 0;
+        Page = result?.Page ?? 1;
+        PageSize = result?.PageSize ?? 10;
+    }
+
+    private Task OpenSetupAsync(Guid clinicId)
+    {
+        NavigationManager.NavigateTo($"/setup?clinicId={clinicId}");
+        return Task.CompletedTask;
+    }
+
+    private sealed class ClinicListResponseVm
+    {
+        public List<ClinicListItemResponseVm> Items { get; set; } = [];
+        public int TotalCount { get; set; }
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+    }
+
+    private sealed class ClinicListItemResponseVm
+    {
+        public Guid ClinicId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public DateTime CreatedAtUtc { get; set; }
+    }
+}

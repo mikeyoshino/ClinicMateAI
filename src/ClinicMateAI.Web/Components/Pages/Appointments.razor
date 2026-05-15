@@ -1,0 +1,57 @@
+@page "/appointments"
+
+<PageTitle>Appointments</PageTitle>
+
+<section class="cm-stack">
+    <article class="cm-panel">
+        <header class="cm-panel-header">คิวนัดหมายวันนี้</header>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>เวลา</th>
+                        <th>ลูกค้า</th>
+                        <th>บริการ</th>
+                        <th>แพทย์</th>
+                        <th>สถานะ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>13:30</td>
+                        <td>คุณลูกค้า Demo</td>
+                        <td>Botox Jaw</td>
+                        <td>หมอแนน</td>
+                        <td><span class="badge text-bg-success">ยืนยันแล้ว</span></td>
+                    </tr>
+                    <tr>
+                        <td>15:00</td>
+                        <td>คุณลูกค้า Ming</td>
+                        <td>เลเซอร์หน้าใส</td>
+                        <td>หมอพลอย</td>
+                        <td><span class="badge text-bg-warning">รอมัดจำ</span></td>
+                    </tr>
+                    <tr>
+                        <td>18:00</td>
+                        <td>คุณลูกค้า Beam</td>
+                        <td>ฉีดฟิลเลอร์</td>
+                        <td>หมอแนน</td>
+                        <td><span class="badge text-bg-secondary">รอยืนยัน</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </article>
+
+    <article class="cm-panel">
+        <header class="cm-panel-header">ตัวเลือกเวลาว่างแนะนำโดยระบบ</header>
+        <div class="p-3">
+            <p class="mb-2">ระบบพบช่วงเวลาว่างสำหรับ Botox Jaw:</p>
+            <div class="d-flex flex-wrap gap-2">
+                <span class="badge rounded-pill text-bg-light border">พรุ่งนี้ 13:30</span>
+                <span class="badge rounded-pill text-bg-light border">พรุ่งนี้ 15:00</span>
+                <span class="badge rounded-pill text-bg-light border">พรุ่งนี้ 18:00</span>
+            </div>
+        </div>
+    </article>
+</section>

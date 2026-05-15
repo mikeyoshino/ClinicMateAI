@@ -1,0 +1,73 @@
+@implements IDisposable
+@inject ClinicMateAI.Web.Services.ToastService ToastService
+
+<div class="cm-toast-host">
+    @foreach (var toast in _toasts)
+    {
+        <div class="cm-toast-item @GetCss(toast.Level)" role="alert">
+            <span class="cm-toast-icon">@GetIcon(toast.Level)</span>
+            <span class="cm-toast-msg">@toast.Message</span>
+            <button type="button" class="cm-toast-close" aria-label="ปิด" @onclick="() => Dismiss(toast.Id)">&#x2715;</button>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<ClinicMateAI.Web.Services.ToastMessage> _toasts = [];
+
+    protected override void OnInitialized()
+    {
+        ToastService.OnShow += HandleShow;
+        ToastService.OnHide += HandleHide;
+    }
+
+    private void HandleShow(ClinicMateAI.Web.Services.ToastMessage message)
+    {
+        _toasts.Add(message);
+        _ = AutoDismissAsync(message.Id, message.DurationMs);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleHide(Guid id)
+    {
+        Dismiss(id);
+    }
+
+    private async Task AutoDismissAsync(Guid id, int delayMs)
+    {
+        await Task.Delay(delayMs);
+        Dismiss(id);
+    }
+
+    private void Dismiss(Guid id)
+    {
+        var index = _toasts.FindIndex(x => x.Id == id);
+        if (index >= 0)
+        {
+            _toasts.RemoveAt(index);
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private static string GetCss(ClinicMateAI.Web.Services.ToastLevel level) => level switch
+    {
+        ClinicMateAI.Web.Services.ToastLevel.Success => "cm-toast-success",
+        ClinicMateAI.Web.Services.ToastLevel.Error   => "cm-toast-error",
+        ClinicMateAI.Web.Services.ToastLevel.Warning => "cm-toast-warning",
+        _                                            => "cm-toast-info"
+    };
+
+    private static string GetIcon(ClinicMateAI.Web.Services.ToastLevel level) => level switch
+    {
+        ClinicMateAI.Web.Services.ToastLevel.Success => "✓",
+        ClinicMateAI.Web.Services.ToastLevel.Error   => "✕",
+        ClinicMateAI.Web.Services.ToastLevel.Warning => "⚠",
+        _                                            => "ℹ"
+    };
+
+    public void Dispose()
+    {
+        ToastService.OnShow -= HandleShow;
+        ToastService.OnHide -= HandleHide;
+    }
+}

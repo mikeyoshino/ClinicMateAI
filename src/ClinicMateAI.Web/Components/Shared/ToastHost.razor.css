@@ -1,0 +1,88 @@
+.cm-toast-host {
+    position: fixed;
+    top: 84px;
+    right: 16px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 380px;
+    pointer-events: none;
+}
+
+.cm-toast-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    border-radius: 10px;
+    border-left: 4px solid transparent;
+    padding: 12px 14px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.13);
+    font-size: 0.9rem;
+    font-family: 'Noto Sans Thai', "Segoe UI", sans-serif;
+    line-height: 1.45;
+    pointer-events: all;
+    animation: toast-slide-in 0.22s ease;
+}
+
+.cm-toast-icon {
+    flex-shrink: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-top: 1px;
+}
+
+.cm-toast-msg {
+    flex: 1;
+}
+
+@keyframes toast-slide-in {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Success ──────────────────────────────────── */
+.cm-toast-success {
+    background: #f0fdf4;
+    border-color: #16a34a;
+    color: #14532d;
+}
+
+/* ── Error ────────────────────────────────────── */
+.cm-toast-error {
+    background: #fff1f2;
+    border-color: #e11d48;
+    color: #881337;
+}
+
+/* ── Warning ──────────────────────────────────── */
+.cm-toast-warning {
+    background: #fffbeb;
+    border-color: #d97706;
+    color: #78350f;
+}
+
+/* ── Info (default) ───────────────────────────── */
+.cm-toast-info {
+    background: #f0f9ff;
+    border-color: #0891b2;
+    color: #164e63;
+}
+
+.cm-toast-close {
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    opacity: 0.55;
+    font-size: 1rem;
+    margin-top: 1px;
+    transition: opacity 0.15s;
+}
+
+.cm-toast-close:hover {
+    opacity: 1;
+}

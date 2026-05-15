@@ -1,0 +1,165 @@
+@page "/promotions"
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Promotions</PageTitle>
+
+<section class="cm-panel">
+    <header class="cm-panel-header d-flex justify-content-between align-items-center">
+        <span>โปรโมชันที่ AI ใช้งานได้</span>
+        <div class="d-flex gap-2 align-items-center">
+            <label class="mb-0 small text-muted" for="promotionClinicSelect">Clinic</label>
+            <select id="promotionClinicSelect" class="form-select form-select-sm" style="min-width: 220px;" @bind="SelectedClinicIdText" @bind:after="LoadPromotionsAsync">
+                <option value="">Select clinic</option>
+                @foreach (var clinic in Clinics)
+                {
+                    <option value="@clinic.ClinicId">@clinic.Name</option>
+                }
+            </select>
+        </div>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="alert alert-danger m-3 mb-0">@Error</div>
+    }
+
+    <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>ชื่อโปรโมชัน</th>
+                    <th>บริการ</th>
+                    <th>ราคาโปร</th>
+                    <th>ช่วงเวลา</th>
+                    <th>เงื่อนไข</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (IsLoading)
+                {
+                    <tr>
+                        <td colspan="5" class="text-muted">Loading promotions...</td>
+                    </tr>
+                }
+                else if (PromotionItems.Count == 0)
+                {
+                    <tr>
+                        <td colspan="5" class="text-muted">No available promotions for AI.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var promotion in PromotionItems)
+                    {
+                        <tr>
+                            <td>@promotion.Name</td>
+                            <td>@(string.IsNullOrWhiteSpace(promotion.RelatedServiceName) ? "-" : promotion.RelatedServiceName)</td>
+                            <td>@(promotion.PromoPrice.HasValue ? $"{promotion.PromoPrice.Value:N0} บาท" : "-")</td>
+                            <td>@promotion.StartsOn.ToString("dd MMM yyyy") - @promotion.EndsOn.ToString("dd MMM yyyy")</td>
+                            <td>@promotion.Conditions</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@code {
+    private string SelectedClinicIdText { get; set; } = string.Empty;
+    private bool IsLoading { get; set; }
+    private string? Error { get; set; }
+    private List<ClinicVm> Clinics { get; } = [];
+    private List<PromotionVm> PromotionItems { get; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClinicsAsync();
+    }
+
+    private async Task LoadClinicsAsync()
+    {
+        Error = null;
+        IsLoading = true;
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var url = NavigationManager.ToAbsoluteUri("/api/inbox/clinics").ToString();
+            var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                Error = $"Failed to load clinics ({(int)response.StatusCode}).";
+                return;
+            }
+
+            var clinics = await response.Content.ReadFromJsonAsync<List<ClinicVm>>();
+            Clinics.Clear();
+            if (clinics is not null)
+            {
+                Clinics.AddRange(clinics);
+            }
+
+            if (Clinics.Count > 0)
+            {
+                SelectedClinicIdText = Clinics[0].ClinicId.ToString();
+                await LoadPromotionsAsync();
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task LoadPromotionsAsync()
+    {
+        Error = null;
+        PromotionItems.Clear();
+
+        if (!Guid.TryParse(SelectedClinicIdText, out var clinicId))
+        {
+            return;
+        }
+
+        IsLoading = true;
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var url = NavigationManager.ToAbsoluteUri($"/api/promotions/available?clinicId={clinicId}").ToString();
+            var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                Error = $"Failed to load promotions ({(int)response.StatusCode}).";
+                return;
+            }
+
+            var items = await response.Content.ReadFromJsonAsync<List<PromotionVm>>();
+            if (items is not null)
+            {
+                PromotionItems.AddRange(items);
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private sealed class ClinicVm
+    {
+        public Guid ClinicId { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    private sealed class PromotionVm
+    {
+        public Guid PromotionId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? RelatedServiceName { get; set; }
+        public decimal? PromoPrice { get; set; }
+        public DateOnly StartsOn { get; set; }
+        public DateOnly EndsOn { get; set; }
+        public string Conditions { get; set; } = string.Empty;
+    }
+}

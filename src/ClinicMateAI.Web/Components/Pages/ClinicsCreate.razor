@@ -1,0 +1,145 @@
+@page "/clinics/create"
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@inject ClinicMateAI.Web.Services.ToastService ToastService
+
+<PageTitle>สร้างคลินิกใหม่</PageTitle>
+
+<div class="d-flex align-items-center gap-2 mb-3">
+    <a class="btn btn-sm btn-outline-secondary" href="/clinics">← กลับรายการคลินิก</a>
+    <h5 class="mb-0">สร้างคลินิกใหม่</h5>
+</div>
+
+<section class="cm-panel">
+    <header class="cm-panel-header">ข้อมูลคลินิก</header>
+    <div class="p-3">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">ชื่อคลินิก <span class="text-danger">*</span></label>
+                <input id="clinic-name" class="form-control @(ShowErrors && string.IsNullOrWhiteSpace(Form.Name) ? "is-invalid" : "")"
+                       placeholder="เช่น Beauty Clinic สาขาสยาม"
+                       @bind="Form.Name" />
+                @if (ShowErrors && string.IsNullOrWhiteSpace(Form.Name))
+                {
+                    <div class="invalid-feedback">กรุณากรอกชื่อคลินิก</div>
+                }
+                <div class="form-text">ชื่อที่ใช้แสดงในระบบและแชทบอท</div>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">เบอร์โทร <span class="text-danger">*</span></label>
+                <input id="clinic-phone" class="form-control @(ShowErrors && string.IsNullOrWhiteSpace(Form.Phone) ? "is-invalid" : "")"
+                       placeholder="เช่น 02-XXX-XXXX"
+                       @bind="Form.Phone" />
+                @if (ShowErrors && string.IsNullOrWhiteSpace(Form.Phone))
+                {
+                    <div class="invalid-feedback">กรุณากรอกเบอร์โทร</div>
+                }
+                <div class="form-text">เบอร์ติดต่อหลักของคลินิก</div>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">ที่อยู่ <span class="text-danger">*</span></label>
+                <input id="clinic-address" class="form-control @(ShowErrors && string.IsNullOrWhiteSpace(Form.Address) ? "is-invalid" : "")"
+                       placeholder="เช่น 123 ถ.สุขุมวิท แขวงคลองเตย กรุงเทพฯ 10110"
+                       @bind="Form.Address" />
+                @if (ShowErrors && string.IsNullOrWhiteSpace(Form.Address))
+                {
+                    <div class="invalid-feedback">กรุณากรอกที่อยู่คลินิก</div>
+                }
+                <div class="form-text">ที่อยู่สำหรับแสดงให้ลูกค้าทราบ</div>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">ลิงก์แผนที่</label>
+                <input id="clinic-map-url" class="form-control"
+                       placeholder="เช่น https://maps.google.com/..."
+                       @bind="Form.MapUrl" />
+                <div class="form-text">ลิงก์ Google Maps สำหรับส่งให้ลูกค้า (ไม่บังคับ)</div>
+            </div>
+
+            <div class="col-12 d-flex gap-2 pt-1">
+                <button id="btn-create-clinic" class="btn btn-primary" @onclick="CreateClinicAsync" disabled="@IsBusy">
+                    @if (IsBusy)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        <span>กำลังสร้าง...</span>
+                    }
+                    else
+                    {
+                        <span>สร้างคลินิก</span>
+                    }
+                </button>
+                <a class="btn btn-outline-secondary" href="/clinics">ยกเลิก</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    private bool IsBusy { get; set; }
+    private bool ShowErrors { get; set; }
+    private CreateClinicVm Form { get; } = new();
+
+    private async Task CreateClinicAsync()
+    {
+        ShowErrors = true;
+        if (string.IsNullOrWhiteSpace(Form.Name) ||
+            string.IsNullOrWhiteSpace(Form.Address) ||
+            string.IsNullOrWhiteSpace(Form.Phone))
+        {
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var payload = new
+            {
+                Form.Name,
+                Form.Address,
+                Form.Phone,
+                Form.MapUrl,
+                Status = "Active"
+            };
+            var response = await client.PostAsJsonAsync(
+                NavigationManager.ToAbsoluteUri("/api/clinics").ToString(), payload);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ToastService.Error($"สร้างคลินิกล้มเหลว ({(int)response.StatusCode})");
+                return;
+            }
+
+            var created = await response.Content.ReadFromJsonAsync<CreateClinicResultVm>();
+            ToastService.Success("สร้างคลินิกเรียบร้อย");
+
+            if (created is not null)
+            {
+                NavigationManager.NavigateTo($"/setup?clinicId={created.ClinicId}");
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/clinics");
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private sealed class CreateClinicVm
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public string? MapUrl { get; set; }
+    }
+
+    private sealed class CreateClinicResultVm
+    {
+        public Guid ClinicId { get; set; }
+    }
+}

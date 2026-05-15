@@ -1,0 +1,453 @@
+@page "/setup"
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@inject ClinicMateAI.Web.Services.ToastService ToastService
+
+<PageTitle>Setup</PageTitle>
+
+<section class="cm-panel mb-3">
+    <header class="cm-panel-header d-flex justify-content-between align-items-center">
+        <span>ตัวช่วยตั้งค่าคลินิก</span>
+        <div class="d-flex gap-2 align-items-center">
+            <label class="mb-0 small text-muted" for="setupClinicSelect">คลินิก</label>
+            <select id="setupClinicSelect" class="form-select form-select-sm" style="min-width: 220px;" @bind="SelectedClinicIdText" @bind:after="ReloadAllAsync">
+                <option value="">เลือกคลินิก</option>
+                @foreach (var clinic in Clinics)
+                {
+                    <option value="@clinic.ClinicId">@clinic.Name</option>
+                }
+            </select>
+        </div>
+    </header>
+    <div class="p-3">
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <div class="alert alert-danger mb-0">@Error</div>
+        }
+        else if (Overview is not null)
+        {
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="small text-muted">@Overview.ClinicName</div>
+                    <div class="fw-semibold">เสร็จแล้ว @Overview.CompletedSteps / @Overview.TotalSteps ขั้นตอน</div>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+<section class="cm-grid mb-3">
+    @if (Overview is not null)
+    {
+        @foreach (var step in Overview.Steps)
+        {
+            <article class="cm-card @(step.Status == "Ready" ? "" : "cm-alert")">
+                <p class="cm-label">@step.Title</p>
+                <h2 class="cm-value">@step.Status</h2>
+                <p class="cm-note">@step.Detail</p>
+            </article>
+        }
+    }
+</section>
+
+<section class="cm-panel mb-3">
+    <header class="cm-panel-header">ข้อมูลคลินิก</header>
+    <div class="p-3">
+        <div class="row g-2">
+            <div class="col-md-6">
+                <label class="form-label">ชื่อคลินิก <span class="text-danger">*</span> <span class="cm-help-icon" title="ใช้เป็นชื่อที่แสดงในแดชบอร์ด กล่องข้อความ และข้อความตอบของ AI"><Heroicon Name="@HeroiconName.InformationCircle" Type="HeroiconType.Mini" /></span></label>
+                <input class="form-control" @bind="ProfileForm.Name" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">เบอร์โทรศัพท์ <span class="text-danger">*</span> <span class="cm-help-icon" title="ใช้เป็นเบอร์ติดต่อหลักที่แสดงให้ทีมงานและลูกค้าเห็น"><Heroicon Name="@HeroiconName.InformationCircle" Type="HeroiconType.Mini" /></span></label>
+                <input class="form-control" @bind="ProfileForm.Phone" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">ที่อยู่ <span class="text-danger">*</span> <span class="cm-help-icon" title="ใช้ในข้อมูลโปรไฟล์คลินิกและข้อความที่สื่อสารกับลูกค้า"><Heroicon Name="@HeroiconName.InformationCircle" Type="HeroiconType.Mini" /></span></label>
+                <input class="form-control" @bind="ProfileForm.Address" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">ลิงก์แผนที่ <span class="text-danger">*</span> <span class="cm-help-icon" title="ใช้ส่งตำแหน่งและเส้นทางให้ลูกค้าในแชตและการติดตามนัดหมาย"><Heroicon Name="@HeroiconName.InformationCircle" Type="HeroiconType.Mini" /></span></label>
+                <input class="form-control" @bind="ProfileForm.MapUrl" />
+            </div>
+            <div class="col-12">
+                <button class="btn btn-primary" @onclick="SaveProfileAsync" disabled="@IsBusy">บันทึกข้อมูลคลินิก</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="cm-panel">
+    <header class="cm-panel-header">บริการ</header>
+    <div class="p-3">
+        <div class="row g-2 mb-3">
+            <div class="col-md-4">
+                <label class="form-label">ชื่อบริการ <span class="text-danger">*</span> <span class="cm-help-icon" title="ใช้ในรายการบริการ โปรโมชัน และข้อความแนะนำของ AI"><Heroicon Name="@HeroiconName.InformationCircle" Type="HeroiconType.Mini" /></span></label>
+                <input class="form-control" @bind="ServiceForm.Name" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">หมวดหมู่ <span class="text-danger">*</span> <span class="cm-help-icon" title="ใช้จัดกลุ่มบริการเพื่อให้ค้นหาและจัดการได้ง่ายขึ้น"><Heroicon Name="@HeroiconName.InformationCircle" Type="HeroiconType.Mini" /></span></label>
+                <input class="form-control" @bind="ServiceForm.Category" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">ราคาเริ่มต้น <span class="cm-help-icon" title="ใช้เป็นราคาอ้างอิงสำหรับทีมงานและคำตอบของ AI หากยังไม่แน่ใจสามารถใส่ 0 ได้"><Heroicon Name="@HeroiconName.InformationCircle" Type="HeroiconType.Mini" /></span></label>
+                <input class="form-control" type="number" min="0" @bind="ServiceForm.StartingPrice" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">ระยะเวลา (นาที) <span class="text-danger">*</span> <span class="cm-help-icon" title="ใช้คำนวณช่วงเวลาว่างสำหรับจองนัดและจัดตาราง"><Heroicon Name="@HeroiconName.InformationCircle" Type="HeroiconType.Mini" /></span></label>
+                <input class="form-control" type="number" min="1" @bind="ServiceForm.DurationMinutes" />
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <div class="form-check">
+                    <input class="form-check-input" id="doctorCheck" type="checkbox" @bind="ServiceForm.RequiresDoctorAssessment" />
+                    <label class="form-check-label" for="doctorCheck">ต้องประเมินโดยแพทย์</label>
+                </div>
+            </div>
+            <div class="col-12">
+                <label class="form-label">ข้อความที่อนุมัติให้ AI ใช้ <span class="text-danger">*</span> <span class="cm-help-icon" title="ข้อความที่ AI ได้รับอนุญาตให้ใช้ตอบลูกค้าเกี่ยวกับบริการนี้"><Heroicon Name="@HeroiconName.InformationCircle" Type="HeroiconType.Mini" /></span></label>
+                <input class="form-control" @bind="ServiceForm.ApprovedAiWording" />
+            </div>
+            <div class="col-12">
+                <button class="btn btn-primary" @onclick="AddServiceAsync" disabled="@IsBusy">เพิ่มบริการ</button>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>ชื่อบริการ</th>
+                        <th>หมวดหมู่</th>
+                        <th>ราคา</th>
+                        <th>ระยะเวลา</th>
+                        <th>ประเมินโดยแพทย์</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Services.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="5" class="text-muted">ยังไม่มีบริการที่ตั้งค่าไว้</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var service in Services)
+                        {
+                            var svc = service;
+                            <tr>
+                                <td>@svc.Name</td>
+                                <td>@svc.Category</td>
+                                <td>@svc.StartingPrice.ToString("N0")</td>
+                                <td>@svc.DurationMinutes นาที</td>
+                                <td>@(svc.RequiresDoctorAssessment ? "ใช่" : "ไม่ใช่")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            disabled="@IsBusy"
+                                            @onclick="() => DeleteServiceAsync(svc.ServiceId)">
+                                        ลบ
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+@code {
+    [SupplyParameterFromQuery(Name = "clinicId")]
+    public Guid? ClinicIdFromQuery { get; set; }
+
+    private string SelectedClinicIdText { get; set; } = string.Empty;
+    private bool IsBusy { get; set; }
+    private string? Error { get; set; }
+    private SetupOverviewVm? Overview { get; set; }
+    private ProfileVm ProfileForm { get; } = new();
+    private ServiceVm ServiceForm { get; } = new() { DurationMinutes = 30 };
+    private List<ClinicVm> Clinics { get; } = [];
+    private List<ServiceVm> Services { get; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClinicsAsync();
+    }
+
+    private async Task LoadClinicsAsync()
+    {
+        Error = null;
+        var client = HttpClientFactory.CreateClient();
+        var url = NavigationManager.ToAbsoluteUri("/api/inbox/clinics").ToString();
+        var response = await client.GetAsync(url);
+        if (!response.IsSuccessStatusCode)
+        {
+            Error = $"Failed to load clinics ({(int)response.StatusCode}).";
+            ToastService.Error(Error);
+            return;
+        }
+
+        var clinics = await response.Content.ReadFromJsonAsync<List<ClinicVm>>();
+        Clinics.Clear();
+        if (clinics is not null)
+        {
+            Clinics.AddRange(clinics);
+        }
+
+        if (Clinics.Count > 0)
+        {
+            var preferredClinicId = ClinicIdFromQuery.HasValue && Clinics.Any(x => x.ClinicId == ClinicIdFromQuery.Value)
+                ? ClinicIdFromQuery.Value
+                : Clinics[0].ClinicId;
+            SelectedClinicIdText = preferredClinicId.ToString();
+            await ReloadAllAsync();
+        }
+    }
+
+    private async Task ReloadAllAsync()
+    {
+        if (!Guid.TryParse(SelectedClinicIdText, out var clinicId))
+        {
+            return;
+        }
+
+        IsBusy = true;
+        Error = null;
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var overviewUrl = NavigationManager.ToAbsoluteUri($"/api/setup/overview?clinicId={clinicId}").ToString();
+            var servicesUrl = NavigationManager.ToAbsoluteUri($"/api/setup/services?clinicId={clinicId}").ToString();
+
+            var overviewResponse = await client.GetAsync(overviewUrl);
+            if (!overviewResponse.IsSuccessStatusCode)
+            {
+                Error = $"Failed to load setup overview ({(int)overviewResponse.StatusCode}).";
+                ToastService.Error(Error);
+                return;
+            }
+
+            Overview = await overviewResponse.Content.ReadFromJsonAsync<SetupOverviewVm>();
+            if (Overview is not null)
+            {
+                ProfileForm.Name = Overview.ClinicName;
+                ProfileForm.Address = Overview.Address;
+                ProfileForm.Phone = Overview.Phone;
+                ProfileForm.MapUrl = Overview.MapUrl;
+            }
+
+            var servicesResponse = await client.GetAsync(servicesUrl);
+            if (!servicesResponse.IsSuccessStatusCode)
+            {
+                Error = $"Failed to load services ({(int)servicesResponse.StatusCode}).";
+                ToastService.Error(Error);
+                return;
+            }
+
+            var services = await servicesResponse.Content.ReadFromJsonAsync<List<ServiceVm>>();
+            Services.Clear();
+            if (services is not null)
+            {
+                Services.AddRange(services);
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        if (!Guid.TryParse(SelectedClinicIdText, out var clinicId))
+        {
+            ToastService.Error("กรุณาเลือกคลินิก");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(ProfileForm.Name)
+            || string.IsNullOrWhiteSpace(ProfileForm.Address)
+            || string.IsNullOrWhiteSpace(ProfileForm.Phone)
+            || string.IsNullOrWhiteSpace(ProfileForm.MapUrl))
+        {
+            ToastService.Error("กรุณากรอกข้อมูลคลินิกที่จำเป็นให้ครบ");
+            return;
+        }
+
+        IsBusy = true;
+        Error = null;
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var response = await client.PutAsJsonAsync(
+                NavigationManager.ToAbsoluteUri("/api/setup/clinic-profile").ToString(),
+                new
+                {
+                    clinicId,
+                    name = ProfileForm.Name,
+                    address = ProfileForm.Address,
+                    phone = ProfileForm.Phone,
+                    mapUrl = ProfileForm.MapUrl
+                });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Error = $"บันทึกข้อมูลคลินิกล้มเหลว ({(int)response.StatusCode})";
+                ToastService.Error(Error);
+                return;
+            }
+
+            await ReloadAllAsync();
+            ToastService.Success("บันทึกข้อมูลคลินิกเรียบร้อย");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task AddServiceAsync()
+    {
+        if (!Guid.TryParse(SelectedClinicIdText, out var clinicId))
+        {
+            ToastService.Error("กรุณาเลือกคลินิก");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(ServiceForm.Name)
+            || string.IsNullOrWhiteSpace(ServiceForm.Category)
+            || string.IsNullOrWhiteSpace(ServiceForm.ApprovedAiWording)
+            || ServiceForm.DurationMinutes <= 0)
+        {
+            ToastService.Error("กรุณากรอกข้อมูลบริการที่จำเป็นให้ครบ");
+            return;
+        }
+
+        if (ServiceForm.StartingPrice < 0)
+        {
+            ToastService.Error("ราคาต้องมากกว่าหรือเท่ากับ 0");
+            return;
+        }
+
+        IsBusy = true;
+        Error = null;
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var response = await client.PostAsJsonAsync(
+                NavigationManager.ToAbsoluteUri("/api/setup/services").ToString(),
+                new
+                {
+                    clinicId,
+                    name = ServiceForm.Name,
+                    category = ServiceForm.Category,
+                    startingPrice = ServiceForm.StartingPrice,
+                    durationMinutes = ServiceForm.DurationMinutes,
+                    requiresDoctorAssessment = ServiceForm.RequiresDoctorAssessment,
+                    approvedAiWording = ServiceForm.ApprovedAiWording
+                });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Error = $"เพิ่มบริการล้มเหลว ({(int)response.StatusCode})";
+                ToastService.Error(Error);
+                return;
+            }
+
+            ServiceForm.Name = string.Empty;
+            ServiceForm.Category = string.Empty;
+            ServiceForm.StartingPrice = 0;
+            ServiceForm.DurationMinutes = 30;
+            ServiceForm.RequiresDoctorAssessment = false;
+            ServiceForm.ApprovedAiWording = string.Empty;
+
+            await ReloadAllAsync();
+            ToastService.Success("เพิ่มบริการเรียบร้อย");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task DeleteServiceAsync(Guid serviceId)
+    {
+        if (!Guid.TryParse(SelectedClinicIdText, out var clinicId))
+        {
+            ToastService.Error("กรุณาเลือกคลินิก");
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var url = NavigationManager.ToAbsoluteUri($"/api/setup/services/{serviceId}?clinicId={clinicId}").ToString();
+            var response = await client.DeleteAsync(url);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                ToastService.Warning("ไม่พบบริการนี้ในระบบ");
+                return;
+            }
+            if (!response.IsSuccessStatusCode)
+            {
+                ToastService.Error($"ลบบริการล้มเหลว ({(int)response.StatusCode})");
+                return;
+            }
+
+            await ReloadAllAsync();
+            ToastService.Success("ลบบริการเรียบร้อย");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private sealed class ClinicVm
+    {
+        public Guid ClinicId { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    private sealed class SetupOverviewVm
+    {
+        public Guid ClinicId { get; set; }
+        public string ClinicName { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public string MapUrl { get; set; } = string.Empty;
+        public int CompletedSteps { get; set; }
+        public int TotalSteps { get; set; }
+        public List<SetupStepVm> Steps { get; set; } = [];
+    }
+
+    private sealed class SetupStepVm
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string Detail { get; set; } = string.Empty;
+    }
+
+    private sealed class ProfileVm
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public string MapUrl { get; set; } = string.Empty;
+    }
+
+    private sealed class ServiceVm
+    {
+        public Guid ServiceId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public decimal StartingPrice { get; set; }
+        public int DurationMinutes { get; set; }
+        public bool RequiresDoctorAssessment { get; set; }
+        public string ApprovedAiWording { get; set; } = string.Empty;
+    }
+}

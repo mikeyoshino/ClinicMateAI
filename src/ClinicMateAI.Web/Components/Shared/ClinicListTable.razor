@@ -1,0 +1,117 @@
+<section class="cm-panel mb-3">
+    <header class="cm-panel-header">รายการคลินิก</header>
+    <div class="p-3">
+        <div class="row g-2 mb-3">
+            <div class="col-md-4">
+                <label class="form-label">ค้นหาชื่อคลินิก</label>
+                <input class="form-control" @bind="Name" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">สร้างตั้งแต่</label>
+                <input class="form-control" type="date" @bind="CreatedFrom" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">สร้างถึง</label>
+                <input class="form-control" type="date" @bind="CreatedTo" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">สถานะ</label>
+                <select class="form-select" @bind="Status">
+                    <option value="">ทั้งหมด</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                </select>
+            </div>
+            <div class="col-12 d-flex gap-2">
+                <button class="btn btn-primary" @onclick="SearchAsync">ค้นหา</button>
+                <button class="btn btn-outline-secondary" @onclick="ResetAsync">ล้างตัวกรอง</button>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle mb-2">
+                <thead>
+                    <tr>
+                        <th>ชื่อคลินิก</th>
+                        <th>เบอร์โทร</th>
+                        <th>ที่อยู่</th>
+                        <th>สถานะ</th>
+                        <th>วันที่สร้าง</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Items.Count == 0)
+                    {
+                        <tr><td colspan="6" class="text-muted">ไม่พบข้อมูลคลินิก</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Items)
+                        {
+                            <tr>
+                                <td>@item.Name</td>
+                                <td>@item.Phone</td>
+                                <td>@item.Address</td>
+                                <td>@item.Status</td>
+                                <td>@item.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd")</td>
+                                <td><button class="btn btn-sm btn-outline-primary" @onclick="() => OpenSetupAsync(item.ClinicId)">ไปหน้า Setup</button></td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center">
+            <small class="text-muted">ทั้งหมด @TotalCount รายการ</small>
+            <div class="d-flex gap-2 align-items-center">
+                <button class="btn btn-sm btn-outline-secondary" @onclick="PrevAsync" disabled="@(Page <= 1)">ก่อนหน้า</button>
+                <span>หน้า @Page</span>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="NextAsync" disabled="@((Page * PageSize) >= TotalCount)">ถัดไป</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter] public IReadOnlyList<ClinicListItemVm> Items { get; set; } = [];
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public int Page { get; set; } = 1;
+    [Parameter] public int PageSize { get; set; } = 10;
+    [Parameter] public EventCallback<ClinicListFilterVm> OnFilterChanged { get; set; }
+    [Parameter] public EventCallback<Guid> OnOpenSetup { get; set; }
+
+    private string Name { get; set; } = string.Empty;
+    private DateOnly? CreatedFrom { get; set; }
+    private DateOnly? CreatedTo { get; set; }
+    private string Status { get; set; } = string.Empty;
+
+    private Task SearchAsync() => OnFilterChanged.InvokeAsync(new ClinicListFilterVm(Name, CreatedFrom, CreatedTo, Status, 1, PageSize));
+    private Task OpenSetupAsync(Guid clinicId) => OnOpenSetup.InvokeAsync(clinicId);
+
+    private Task PrevAsync()
+    {
+        if (Page <= 1) return Task.CompletedTask;
+        return OnFilterChanged.InvokeAsync(new ClinicListFilterVm(Name, CreatedFrom, CreatedTo, Status, Page - 1, PageSize));
+    }
+
+    private Task NextAsync()
+    {
+        if ((Page * PageSize) >= TotalCount) return Task.CompletedTask;
+        return OnFilterChanged.InvokeAsync(new ClinicListFilterVm(Name, CreatedFrom, CreatedTo, Status, Page + 1, PageSize));
+    }
+
+    private Task ResetAsync()
+    {
+        Name = string.Empty;
+        CreatedFrom = null;
+        CreatedTo = null;
+        Status = string.Empty;
+        return OnFilterChanged.InvokeAsync(new ClinicListFilterVm(Name, CreatedFrom, CreatedTo, Status, 1, PageSize));
+    }
+
+    public sealed record ClinicListFilterVm(string? Name, DateOnly? CreatedFrom, DateOnly? CreatedTo, string? Status, int Page, int PageSize);
+
+    public sealed record ClinicListItemVm(Guid ClinicId, string Name, string Address, string Phone, string Status, DateTime CreatedAtUtc);
+}
