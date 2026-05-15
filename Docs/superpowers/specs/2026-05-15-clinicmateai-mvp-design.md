@@ -427,7 +427,7 @@ Manual MVP tests should cover:
 
 - App model: Blazor Web App with interactive server rendering.
 - API model: ASP.NET Core endpoints in the same solution for webhook and app APIs.
-- Database provider: SQLite for local MVP development through Entity Framework Core. Keep EF Core abstractions clean so SQL Server or PostgreSQL can be used later.
+- Database provider: PostgreSQL for local MVP development through Entity Framework Core and Npgsql. Run only PostgreSQL in Docker via `docker compose`; run the Blazor/.NET app directly on the host with `dotnet run`. Keep EF Core abstractions clean so managed PostgreSQL or another relational provider can be adopted later.
 - Authentication: ASP.NET Core Identity with role-based authorization for Platform Admin, Clinic Owner, Clinic Admin, Doctor/Specialist, and Staff.
 - Background jobs: .NET hosted services for the first MVP, covering reminders, follow-up checks, and quota monitoring.
 - AI provider: OpenAI-compatible service boundary behind an application interface. Store prompts and clinic context generation in application services, not in UI components.

@@ -4,9 +4,9 @@
 
 **Goal:** Build the first working ClinicMateAI Blazor/.NET MVP for beauty clinics with setup UI, unified test inbox, LINE/Facebook-ready webhooks, AI safety decisions, booking availability, promotions, and admin-only package limits.
 
-**Architecture:** Use a .NET solution with domain/application logic isolated from Blazor UI. The web project hosts Blazor interactive server pages and ASP.NET Core API/webhook endpoints; infrastructure implements EF Core SQLite, seeded demo data, and provider adapters. The MVP runs locally with simulated AI/messaging/calendar providers, while interfaces are shaped for real LINE, Facebook, Google Calendar, and OpenAI credentials.
+**Architecture:** Use a .NET solution with domain/application logic isolated from Blazor UI. The web project hosts Blazor interactive server pages and ASP.NET Core API/webhook endpoints; infrastructure implements EF Core PostgreSQL persistence through Npgsql, seeded demo data, and provider adapters. The MVP runs locally with simulated AI/messaging/calendar providers, while interfaces are shaped for real LINE, Facebook, Google Calendar, and OpenAI credentials.
 
-**Tech Stack:** .NET 8 or newer, C#, Blazor Web App with interactive server rendering, ASP.NET Core Identity, Entity Framework Core with SQLite, xUnit, bUnit, FluentAssertions.
+**Tech Stack:** .NET 8 or newer, C#, Blazor Web App with interactive server rendering, ASP.NET Core Identity, Entity Framework Core with PostgreSQL/Npgsql, Docker Compose for the local PostgreSQL database only, xUnit, bUnit, FluentAssertions.
 
 **UI Reference:** Implement the Blazor UI using `Docs/UIDesignIdea.html` as the required visual and interaction reference. Translate its app-first Thai dashboard, fixed sidebar, slate/teal palette, compact cards, three-column inbox, AI Test simulator, and promotions table into Blazor components and local CSS. Do not rely on Tailwind CDN, Google Fonts CDN, or external script CDNs in the production MVP.
 
@@ -16,7 +16,8 @@
 
 Create this structure:
 
-- `ClinicMateAI.sln` - solution file.
+- `ClinicMateAI.sln` or `ClinicMateAI.slnx` - solution file.
+- `docker-compose.yml` - local PostgreSQL database only; the app runs on the host with `dotnet run`.
 - `src/ClinicMateAI.Domain/` - entities, enums, and pure domain services.
 - `src/ClinicMateAI.Application/` - use cases, DTOs, service interfaces, AI reply orchestration, booking logic.
 - `src/ClinicMateAI.Infrastructure/` - EF Core DbContext, repositories, seeded demo data, simulated providers, LINE/Facebook/Calendar adapter skeletons.
@@ -52,7 +53,8 @@ Key files:
 ### Task 1: Create solution and projects
 
 **Files:**
-- Create: `ClinicMateAI.sln`
+- Create: `ClinicMateAI.sln` or `ClinicMateAI.slnx`
+- Create: `docker-compose.yml`
 - Create: `src/ClinicMateAI.Domain/ClinicMateAI.Domain.csproj`
 - Create: `src/ClinicMateAI.Application/ClinicMateAI.Application.csproj`
 - Create: `src/ClinicMateAI.Infrastructure/ClinicMateAI.Infrastructure.csproj`
@@ -99,15 +101,44 @@ Expected: project references are added without errors.
 Run:
 
 ```powershell
-dotnet add src/ClinicMateAI.Infrastructure package Microsoft.EntityFrameworkCore.Sqlite
+dotnet add src/ClinicMateAI.Infrastructure package Npgsql.EntityFrameworkCore.PostgreSQL
 dotnet add src/ClinicMateAI.Infrastructure package Microsoft.EntityFrameworkCore.Design
-dotnet add src/ClinicMateAI.Web package Microsoft.EntityFrameworkCore.Sqlite
+dotnet add src/ClinicMateAI.Web package Npgsql.EntityFrameworkCore.PostgreSQL
 dotnet add tests/ClinicMateAI.Tests package FluentAssertions
 dotnet add tests/ClinicMateAI.Web.Tests package FluentAssertions
 dotnet add tests/ClinicMateAI.Web.Tests package bunit
 ```
 
 Expected: restore succeeds.
+
+- [ ] **Step 3a: Add local PostgreSQL Docker Compose**
+
+Create `docker-compose.yml`:
+
+```yaml
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: clinicmateai-postgres
+    environment:
+      POSTGRES_DB: clinicmateai_dev
+      POSTGRES_USER: clinicmate
+      POSTGRES_PASSWORD: clinicmate_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - clinicmateai-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clinicmate -d clinicmateai_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  clinicmateai-postgres-data:
+```
+
+Expected: `docker compose up -d postgres` starts the local database. Do not containerize the Blazor app for local development.
 
 - [ ] **Step 4: Verify clean build**
 
@@ -697,11 +728,10 @@ public class DemoDataSeederTests
     public async Task SeedAsync_CreatesBeautyClinicWithPublishedPromotion()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite("DataSource=:memory:")
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
         await using var db = new AppDbContext(options);
-        await db.Database.OpenConnectionAsync();
         await db.Database.EnsureCreatedAsync();
 
         await DemoDataSeeder.SeedAsync(db);
@@ -882,12 +912,12 @@ public static class DemoDataSeeder
 
 - [ ] **Step 6: Register DbContext and seeding**
 
-In `src/ClinicMateAI.Web/Program.cs`, register SQLite and seed on startup:
+In `src/ClinicMateAI.Web/Program.cs`, register PostgreSQL through Npgsql and seed on startup:
 
 ```csharp
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? "Data Source=clinicmateai.db"));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? "Host=localhost;Port=5432;Database=clinicmateai_dev;Username=clinicmate;Password=clinicmate_dev"));
 ```
 
 After `var app = builder.Build();`, add:

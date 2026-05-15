@@ -20,24 +20,73 @@ Read these files before implementation work:
 - `docs/superpowers/specs/2026-05-15-clinicmateai-mvp-design.md` - approved design spec.
 - `docs/superpowers/plans/2026-05-15-clinicmateai-mvp.md` - implementation checklist.
 - `docs/superpowers/plans/2026-05-15-clinicmateai-mvp-th.md` - Thai implementation summary.
+- `Docs/superpowers/plans/2026-05-15-clinicmateai-repository-unit-of-work.md` - repository and unit of work implementation plan.
 
 ## Architecture Rules
 
 Use Clean Architecture boundaries:
 
 - `Domain` contains entities, enums, value objects, and pure domain rules only.
-- `Application` contains use cases, DTOs, service interfaces, orchestration, validation, and business workflows.
-- `Infrastructure` contains EF Core, SQLite, repositories, seed data, provider implementations, and external adapters.
+- `Application` contains contracts only: command/query records, DTOs, repository interfaces, provider interfaces, and use-case interfaces. Do not put business workflow logic in `Application`.
+- `Logic` contains command/query handlers, use-case services, orchestration, validation, and business workflows.
+- `Infrastructure` contains EF Core, PostgreSQL persistence, repositories, seed data, provider implementations, and external adapters.
 - `Web` contains Blazor UI, ASP.NET Core endpoints, authentication, dependency injection, and presentation concerns.
 - Tests live under `tests/`.
 
 Dependency direction must be:
 
+`Web -> Logic -> Application -> Domain`
+
 `Web -> Infrastructure -> Application -> Domain`
 
-`Application -> Domain`
+`Logic -> Application -> Domain`
 
 Never make `Domain` depend on EF Core, ASP.NET Core, Blazor, OpenAI, LINE, Facebook, Google Calendar, or any infrastructure package.
+Never make `Application` depend on `Logic`, `Infrastructure`, EF Core, ASP.NET Core, Blazor, or provider SDKs.
+Never make `Logic` depend on `Infrastructure`; it must depend on `Application` abstractions.
+
+## Command Pattern And Logic Layer Rules
+
+Use command/query patterns for application workflows:
+
+- Commands represent requested state changes, such as `ReceiveMessageCommand`, `CreateAppointmentCommand`, and `PublishPromotionCommand`.
+- Queries represent read-only requests, such as `GetInboxQuery` or `GetClinicDashboardQuery`.
+- Command/query records and handler interfaces belong to `Application`.
+- Handler implementations belong to `Logic`.
+- Business decisions belong in `Logic` or pure `Domain` methods, not in Razor components, API endpoints, repositories, or EF entities.
+- Web endpoints and Blazor components should call handlers/use-case interfaces; they should not call repositories directly.
+- Keep each handler focused on one use case. Split handlers when a workflow grows into unrelated responsibilities.
+- Handlers should coordinate repositories, provider interfaces, domain rules, and `IUnitOfWork`.
+- Handlers should call `IUnitOfWork.SaveChangesAsync` once at the use-case boundary unless a deliberate intermediate commit is documented.
+- Application DTOs and command/query records should be stable contracts and should not include EF Core attributes.
+
+## Validation Rules
+
+Use FluentValidation for command/query input validation:
+
+- FluentValidation validator implementations belong to `Logic`.
+- Command/query records being validated belong to `Application`.
+- `Application` should not depend on FluentValidation packages unless a specific interface contract requires it.
+- Handlers must validate command/query input before calling repositories, provider adapters, or `IUnitOfWork`.
+- Validation failures should return a predictable application result or throw a controlled validation exception handled at the Web boundary.
+- Do not duplicate FluentValidation rules inside Blazor components. UI can show validation messages, but source-of-truth validation belongs to `Logic`.
+- Domain invariants still belong in `Domain`; FluentValidation is for request/input validation, not replacing domain rules.
+- Prefer focused validators such as `ReceiveMessageCommandValidator`, `CreateAppointmentCommandValidator`, and `PublishPromotionCommandValidator`.
+
+## Repository And Unit Of Work Rules
+
+Use repository + unit of work for persistence behavior across application use cases:
+
+- Repository interfaces belong to `Application` (for example under `Application/Abstractions/Persistence`).
+- Repository implementations belong to `Infrastructure` and use EF Core.
+- Repository interfaces are consumed by `Logic` handlers, not directly by `Web`.
+- Keep repositories aligned to aggregate roots (`Clinic`, `Conversation`, `Message`, etc.), not one generic catch-all repository for everything.
+- Do not expose `IQueryable` to `Web` or application use cases. Repositories should return explicit domain objects or DTO projections.
+- All clinic-owned reads must enforce tenant boundaries by `ClinicId`.
+- Methods that fetch child data (for example messages by conversation) must validate the parent belongs to the same `ClinicId`.
+- `IUnitOfWork` commit (`SaveChangesAsync`) is called by `Logic` handlers at the use-case boundary, not inside repositories or domain entities.
+- For single use-case workflows, prefer one commit at the end unless a deliberate intermediate save is required.
+- `DbContext` should stay in `Infrastructure` except startup composition tasks such as migrations or seed execution in `Web`.
 
 ## SOLID Principles
 
@@ -163,6 +212,16 @@ Webhook endpoints should be real and testable even before production credentials
 
 Do not hardcode secrets. Use configuration, user secrets, environment variables, or secure storage.
 
+## Local Development Database
+
+Use PostgreSQL for local development. The application runs on the host with `dotnet run`; only the database runs in Docker through `docker compose`.
+
+- Use `Npgsql.EntityFrameworkCore.PostgreSQL` for EF Core database access.
+- Keep local PostgreSQL settings in `docker-compose.yml` and `appsettings.Development.json`.
+- Do not use SQLite for the MVP application database.
+- Unit tests for domain and application rules should not require Docker.
+- Database integration tests may use a disposable PostgreSQL database/container when provider-specific behavior matters.
+
 ## Testing Rules
 
 Use TDD for domain and application rules.
@@ -209,4 +268,3 @@ Use the implementation plan as the progress tracker:
 Only mark a step done after its verification command passes or after a documented manual check.
 
 The workspace may not be a git repository yet. If git is later initialized, make small commits at milestone boundaries or after coherent tasks.
-

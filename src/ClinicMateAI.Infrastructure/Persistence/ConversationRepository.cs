@@ -1,0 +1,53 @@
+using ClinicMateAI.Application.Abstractions.Persistence;
+using ClinicMateAI.Domain.Messaging;
+using ClinicMateAI.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace ClinicMateAI.Infrastructure.Persistence;
+
+public sealed class ConversationRepository(AppDbContext dbContext) : IConversationRepository
+{
+    public Task<Conversation?> GetByIdAsync(Guid clinicId, Guid conversationId, CancellationToken cancellationToken = default)
+    {
+        return dbContext.Conversations
+            .FirstOrDefaultAsync(
+                x => x.ClinicId == clinicId && x.Id == conversationId,
+                cancellationToken);
+    }
+
+    public Task<Conversation?> GetByExternalIdAsync(
+        Guid clinicId,
+        string channel,
+        string externalConversationId,
+        CancellationToken cancellationToken = default)
+    {
+        return dbContext.Conversations
+            .FirstOrDefaultAsync(
+                x => x.ClinicId == clinicId
+                    && x.Channel == channel
+                    && x.ExternalConversationId == externalConversationId,
+                cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Conversation>> ListRecentAsync(
+        Guid clinicId,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        return await dbContext.Conversations
+            .Where(x => x.ClinicId == clinicId)
+            .OrderByDescending(x => x.LastMessageAtUtc)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task AddAsync(Conversation conversation, CancellationToken cancellationToken = default)
+    {
+        return dbContext.Conversations.AddAsync(conversation, cancellationToken).AsTask();
+    }
+
+    public void Update(Conversation conversation)
+    {
+        dbContext.Conversations.Update(conversation);
+    }
+}

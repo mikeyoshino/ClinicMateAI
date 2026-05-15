@@ -1,0 +1,269 @@
+@page "/inbox"
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Inbox</PageTitle>
+
+<h1>Inbox</h1>
+
+<div class="mb-3 d-flex gap-2 align-items-end">
+    <div>
+        <label class="form-label" for="clinicSelect">Clinic</label>
+        <select id="clinicSelect" class="form-select" @bind="SelectedClinicIdText" @bind:after="OnClinicChangedAsync" disabled="@IsLoadingClinics">
+            <option value="">Select clinic</option>
+            @foreach (var clinic in Clinics)
+            {
+                <option value="@clinic.ClinicId.ToString()">@clinic.Name</option>
+            }
+        </select>
+    </div>
+    <div>
+        <label class="form-label" for="takeInput">Take</label>
+        <input id="takeInput" class="form-control" type="number" min="1" max="200" @bind="Take" disabled="@IsLoadingConversations" />
+    </div>
+    <button class="btn btn-primary" @onclick="LoadConversationsAsync" disabled="@IsLoadingConversations">Load</button>
+    <button class="btn btn-outline-secondary" @onclick="RefreshSelectedConversationAsync" disabled="@(SelectedConversationId is null || IsLoadingMessages)">Refresh Messages</button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Error))
+{
+    <div class="alert alert-danger">@Error</div>
+}
+
+@if (IsLoadingClinics)
+{
+    <p class="text-muted">Loading clinics...</p>
+}
+
+<div class="row">
+    <div class="col-md-5">
+        <h5>Conversations</h5>
+        @if (IsLoadingConversations)
+        {
+            <p class="text-muted">Loading conversations...</p>
+        }
+        else if (Conversations.Count == 0)
+        {
+            <p class="text-muted">No conversations.</p>
+        }
+        else
+        {
+            <div class="list-group">
+                @foreach (var item in Conversations)
+                {
+                    <button
+                        class="list-group-item list-group-item-action @(SelectedConversationId == item.ConversationId ? "active" : "")"
+                        @onclick="() => SelectConversationAsync(item.ConversationId)">
+                        <div class="d-flex w-100 justify-content-between">
+                            <strong>@item.CustomerDisplayName</strong>
+                            <small>@item.Channel</small>
+                        </div>
+                        <small>@item.ExternalConversationId</small>
+                    </button>
+                }
+            </div>
+        }
+    </div>
+    <div class="col-md-7">
+        <h5>Messages</h5>
+        @if (IsLoadingMessages)
+        {
+            <p class="text-muted">Loading messages...</p>
+        }
+        else if (Messages.Count == 0)
+        {
+            <p class="text-muted">No messages.</p>
+        }
+        else
+        {
+            <div class="list-group">
+                @foreach (var message in Messages)
+                {
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <strong>@message.SenderType</strong>
+                            <small>@message.SentAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</small>
+                        </div>
+                        <div>@message.Text</div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string SelectedClinicIdText { get; set; } = string.Empty;
+    private int Take { get; set; } = 50;
+    private string? Error { get; set; }
+    private Guid? SelectedConversationId { get; set; }
+    private bool IsLoadingClinics { get; set; }
+    private bool IsLoadingConversations { get; set; }
+    private bool IsLoadingMessages { get; set; }
+    private List<InboxClinicVm> Clinics { get; } = [];
+    private List<InboxConversationVm> Conversations { get; } = [];
+    private List<InboxMessageVm> Messages { get; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClinicsAsync();
+    }
+
+    private async Task LoadClinicsAsync()
+    {
+        IsLoadingClinics = true;
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var url = NavigationManager.ToAbsoluteUri("/api/inbox/clinics").ToString();
+            var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                Error = $"Failed to load clinics ({(int)response.StatusCode}).";
+                return;
+            }
+
+            var items = await response.Content.ReadFromJsonAsync<List<InboxClinicVm>>();
+            Clinics.Clear();
+            if (items is not null)
+            {
+                Clinics.AddRange(items);
+            }
+
+            if (Clinics.Count > 0 && string.IsNullOrWhiteSpace(SelectedClinicIdText))
+            {
+                SelectedClinicIdText = Clinics[0].ClinicId.ToString();
+                await LoadConversationsAsync();
+            }
+        }
+        finally
+        {
+            IsLoadingClinics = false;
+        }
+    }
+
+    private async Task LoadConversationsAsync()
+    {
+        IsLoadingConversations = true;
+        try
+        {
+            Error = null;
+            var previousSelection = SelectedConversationId;
+            var previousMessages = Messages.ToList();
+            SelectedConversationId = null;
+            Messages.Clear();
+            Conversations.Clear();
+
+            if (!Guid.TryParse(SelectedClinicIdText, out var clinicId))
+            {
+                Error = "Please select a clinic.";
+                return;
+            }
+
+            if (Take is < 1 or > 200)
+            {
+                Error = "Take must be between 1 and 200.";
+                return;
+            }
+
+            var client = HttpClientFactory.CreateClient();
+            var url = NavigationManager.ToAbsoluteUri($"/api/inbox/conversations?clinicId={clinicId}&take={Take}").ToString();
+            var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                Error = $"Failed to load conversations ({(int)response.StatusCode}).";
+                return;
+            }
+
+            var items = await response.Content.ReadFromJsonAsync<List<InboxConversationVm>>();
+            if (items is not null)
+            {
+                Conversations.AddRange(items);
+            }
+
+            if (previousSelection is Guid selected && Conversations.Any(x => x.ConversationId == selected))
+            {
+                SelectedConversationId = selected;
+                if (previousMessages.Count > 0)
+                {
+                    Messages.AddRange(previousMessages);
+                }
+                await RefreshSelectedConversationAsync();
+            }
+        }
+        finally
+        {
+            IsLoadingConversations = false;
+        }
+    }
+
+    private async Task SelectConversationAsync(Guid conversationId)
+    {
+        IsLoadingMessages = true;
+        try
+        {
+            if (!Guid.TryParse(SelectedClinicIdText, out var clinicId))
+            {
+                Error = "Please select a clinic.";
+                return;
+            }
+
+            Error = null;
+            SelectedConversationId = conversationId;
+            Messages.Clear();
+
+            var client = HttpClientFactory.CreateClient();
+            var url = NavigationManager.ToAbsoluteUri($"/api/inbox/conversations/{conversationId}/messages?clinicId={clinicId}").ToString();
+            var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                Error = $"Failed to load messages ({(int)response.StatusCode}).";
+                return;
+            }
+
+            var items = await response.Content.ReadFromJsonAsync<List<InboxMessageVm>>();
+            if (items is not null)
+            {
+                Messages.AddRange(items);
+            }
+        }
+        finally
+        {
+            IsLoadingMessages = false;
+        }
+    }
+
+    private sealed class InboxConversationVm
+    {
+        public Guid ConversationId { get; set; }
+        public string Channel { get; set; } = string.Empty;
+        public string ExternalConversationId { get; set; } = string.Empty;
+        public string CustomerDisplayName { get; set; } = string.Empty;
+    }
+
+    private sealed class InboxClinicVm
+    {
+        public Guid ClinicId { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    private sealed class InboxMessageVm
+    {
+        public string SenderType { get; set; } = string.Empty;
+        public string Text { get; set; } = string.Empty;
+        public DateTime SentAtUtc { get; set; }
+    }
+
+    private async Task OnClinicChangedAsync()
+    {
+        await LoadConversationsAsync();
+    }
+
+    private async Task RefreshSelectedConversationAsync()
+    {
+        if (SelectedConversationId is Guid conversationId)
+        {
+            await SelectConversationAsync(conversationId);
+        }
+    }
+}

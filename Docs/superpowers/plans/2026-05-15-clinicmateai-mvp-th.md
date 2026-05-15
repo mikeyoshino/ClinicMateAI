@@ -4,7 +4,7 @@
 
 **แนวทางสถาปัตยกรรม:** ใช้ .NET solution แยกชั้นงานชัดเจน ได้แก่ Domain, Application, Infrastructure, Web และ Tests เพื่อไม่ให้ business logic ไปปนอยู่ในหน้า UI โดยตรง เว็บหลักเป็น Blazor Web App แบบ interactive server rendering และ backend ใช้ ASP.NET Core endpoints สำหรับ webhook/API
 
-**Tech Stack:** Blazor Web App, ASP.NET Core, C#, Entity Framework Core, SQLite สำหรับ local MVP, ASP.NET Core Identity, xUnit, bUnit, FluentAssertions
+**Tech Stack:** Blazor Web App, ASP.NET Core, C#, Entity Framework Core กับ PostgreSQL/Npgsql สำหรับ local MVP, Docker Compose สำหรับรันเฉพาะ database, ASP.NET Core Identity, xUnit, bUnit, FluentAssertions
 
 **UI Reference:** ให้ใช้ `Docs/UIDesignIdea.html` เป็นแนวทางหลักของหน้าตาและ interaction ของแอป โดยแปลงจาก HTML prototype ไปเป็น Blazor components และ CSS ภายในโปรเจกต์ ห้ามพึ่ง Tailwind CDN, Google Fonts CDN หรือ external script CDN ใน production MVP
 
@@ -23,10 +23,11 @@
 
 ## โครงสร้างโปรเจกต์
 
-- `ClinicMateAI.sln` - solution หลัก
+- `ClinicMateAI.sln` หรือ `ClinicMateAI.slnx` - solution หลัก
+- `docker-compose.yml` - PostgreSQL สำหรับ local development เท่านั้น โดยแอปรันบนเครื่องด้วย `dotnet run`
 - `src/ClinicMateAI.Domain/` - entity, enum, domain rule ที่ไม่ผูกกับ database หรือ UI
 - `src/ClinicMateAI.Application/` - use case, service interface, AI orchestration, booking logic, package logic
-- `src/ClinicMateAI.Infrastructure/` - EF Core, SQLite, seed data, provider จำลอง, adapter สำหรับ LINE/Facebook/Calendar
+- `src/ClinicMateAI.Infrastructure/` - EF Core, PostgreSQL/Npgsql, seed data, provider จำลอง, adapter สำหรับ LINE/Facebook/Calendar
 - `src/ClinicMateAI.Web/` - Blazor UI, Identity, webhook endpoints, dependency injection
 - `tests/ClinicMateAI.Tests/` - unit tests สำหรับ domain/application
 - `tests/ClinicMateAI.Web.Tests/` - component/endpoint tests
@@ -70,7 +71,7 @@
    - Web อ้างถึง Application และ Infrastructure
    - Tests อ้างถึง project ที่ต้องทดสอบ
 4. เพิ่ม NuGet packages:
-   - `Microsoft.EntityFrameworkCore.Sqlite`
+   - `Npgsql.EntityFrameworkCore.PostgreSQL`
    - `Microsoft.EntityFrameworkCore.Design`
    - `FluentAssertions`
    - `bunit`
@@ -213,7 +214,7 @@ Red flag ภาษาไทย:
 
 ### Task 6: EF Core และ Seed Data
 
-ใช้ SQLite สำหรับ MVP local development
+ใช้ PostgreSQL สำหรับ MVP local development โดยรันเฉพาะ database ผ่าน Docker Compose และรันแอปบนเครื่องด้วย `dotnet run`
 
 Entity สำคัญ:
 
