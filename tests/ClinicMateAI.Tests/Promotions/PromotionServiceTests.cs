@@ -57,12 +57,14 @@ public class PromotionServiceTests
     public async Task ListByClinicAsync_ReturnsAllStatuses_ForClinic()
     {
         var clinicId = Guid.NewGuid();
+        var branchId = Guid.NewGuid();
         var repository = new InMemoryPromotionRepository(
         [
             new Promotion
             {
                 Id = Guid.NewGuid(),
                 ClinicId = clinicId,
+                BranchId = branchId,
                 Name = "Published",
                 StartsOn = new DateOnly(2026, 5, 1),
                 EndsOn = new DateOnly(2026, 5, 31),
@@ -72,6 +74,7 @@ public class PromotionServiceTests
             {
                 Id = Guid.NewGuid(),
                 ClinicId = clinicId,
+                BranchId = null,
                 Name = "Draft",
                 StartsOn = new DateOnly(2026, 6, 1),
                 EndsOn = new DateOnly(2026, 6, 30),
@@ -84,6 +87,52 @@ public class PromotionServiceTests
         var result = await service.ListByClinicAsync(clinicId);
 
         result.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task ListByClinicAsync_WithBranchFilter_ReturnsSharedAndBranchPromotions()
+    {
+        var clinicId = Guid.NewGuid();
+        var branchId = Guid.NewGuid();
+        var repository = new InMemoryPromotionRepository(
+        [
+            new Promotion
+            {
+                Id = Guid.NewGuid(),
+                ClinicId = clinicId,
+                BranchId = branchId,
+                Name = "Branch Promo",
+                StartsOn = new DateOnly(2026, 5, 1),
+                EndsOn = new DateOnly(2026, 5, 31),
+                Status = PromotionStatus.Published
+            },
+            new Promotion
+            {
+                Id = Guid.NewGuid(),
+                ClinicId = clinicId,
+                BranchId = null,
+                Name = "Shared Promo",
+                StartsOn = new DateOnly(2026, 6, 1),
+                EndsOn = new DateOnly(2026, 6, 30),
+                Status = PromotionStatus.Draft
+            },
+            new Promotion
+            {
+                Id = Guid.NewGuid(),
+                ClinicId = clinicId,
+                BranchId = Guid.NewGuid(),
+                Name = "Other Branch Promo",
+                StartsOn = new DateOnly(2026, 6, 1),
+                EndsOn = new DateOnly(2026, 6, 30),
+                Status = PromotionStatus.Draft
+            }
+        ]);
+        var unitOfWork = new FakeUnitOfWork();
+        var service = new PromotionService(repository, unitOfWork);
+
+        var result = await service.ListByClinicAsync(clinicId, branchId);
+
+        result.Select(x => x.Name).Should().BeEquivalentTo(["Branch Promo", "Shared Promo"]);
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork
@@ -107,9 +156,25 @@ public class PromotionServiceTests
             return Task.FromResult(result);
         }
 
+        public Task<IReadOnlyList<Promotion>> ListByClinicAsync(Guid clinicId, Guid? branchId, CancellationToken cancellationToken = default)
+        {
+            IReadOnlyList<Promotion> result = Items
+                .Where(x => x.ClinicId == clinicId && (branchId is null || x.BranchId is null || x.BranchId == branchId))
+                .ToList();
+            return Task.FromResult(result);
+        }
+
         public Task<Promotion?> GetByIdAsync(Guid clinicId, Guid promotionId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(Items.FirstOrDefault(x => x.ClinicId == clinicId && x.Id == promotionId));
+        }
+
+        public Task<Promotion?> GetByIdAsync(Guid clinicId, Guid promotionId, Guid? branchId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Items.FirstOrDefault(x =>
+                x.ClinicId == clinicId
+                && x.Id == promotionId
+                && (branchId is null || x.BranchId is null || x.BranchId == branchId)));
         }
 
         public Task AddAsync(Promotion promotion, CancellationToken cancellationToken = default)

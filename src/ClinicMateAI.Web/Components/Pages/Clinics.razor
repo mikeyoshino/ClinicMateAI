@@ -1,4 +1,5 @@
-@page "/clinics"
+@page "/admin/clinics"
+@layout AdminLayout
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
 @inject ClinicMateAI.Web.Services.ToastService ToastService
@@ -8,7 +9,7 @@
 
 <div class="d-flex align-items-center justify-content-between mb-3">
     <h5 class="mb-0">จัดการคลินิก</h5>
-    <a id="btn-go-create-clinic" class="btn btn-primary" href="/clinics/create">+ สร้างคลินิก</a>
+    <a id="btn-go-create-clinic" class="btn btn-primary" href="/admin/clinics/create">+ สร้างคลินิก</a>
 </div>
 
 <ClinicListTable
@@ -65,7 +66,7 @@
 
     private Task OpenSetupAsync(Guid clinicId)
     {
-        NavigationManager.NavigateTo($"/setup?clinicId={clinicId}");
+        NavigationManager.NavigateTo($"/clinic/setup?clinicId={clinicId}");
         return Task.CompletedTask;
     }
 

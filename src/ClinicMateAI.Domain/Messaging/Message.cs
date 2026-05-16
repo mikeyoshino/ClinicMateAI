@@ -8,4 +8,5 @@ public sealed class Message
     public string SenderType { get; set; } = string.Empty;
     public string Text { get; set; } = string.Empty;
     public DateTime SentAtUtc { get; set; } = DateTime.UtcNow;
+    public string? ExternalMessageId { get; set; }
 }

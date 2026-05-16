@@ -1,0 +1,55 @@
+@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
+
+<div class="admin-shell">
+    <aside class="admin-sidebar">
+        <AdminNavMenu />
+    </aside>
+
+    <main class="admin-main">
+        <header class="admin-header">
+            <div>
+                <h1 class="admin-header-title">@GetHeaderTitle()</h1>
+                <p class="admin-header-sub">Platform Administration · ClinicMateAI</p>
+            </div>
+            <div class="admin-header-right">
+                <span class="admin-platform-badge">Platform Admin</span>
+                <AuthorizeView>
+                    <Authorized>
+                        <span class="admin-user-chip">@context.User.Identity?.Name</span>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </header>
+
+        <article class="admin-content">
+            @Body
+        </article>
+    </main>
+</div>
+
+<ToastHost />
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">x</a>
+</div>
+
+@code {
+    private string GetHeaderTitle()
+    {
+        var route = NavigationManager.ToBaseRelativePath(NavigationManager.Uri).ToLowerInvariant().Split('?', 2)[0].TrimEnd('/');
+        return route switch
+        {
+            "admin" => "ภาพรวมแพลตฟอร์ม",
+            "admin/clinics" => "รายการคลินิก",
+            "admin/clinics/create" => "สร้างคลินิกใหม่",
+            "admin/packages" => "แพ็กเกจ & โควตา",
+            "admin/users" => "ผู้ใช้งาน & สิทธิ์",
+            "admin/audit" => "บันทึกการใช้งาน",
+            "admin/settings" => "การตั้งค่าระบบ",
+            _ => "Platform Admin"
+        };
+    }
+}

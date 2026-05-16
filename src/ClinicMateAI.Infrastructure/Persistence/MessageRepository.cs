@@ -22,4 +22,24 @@ public sealed class MessageRepository(AppDbContext dbContext) : IMessageReposito
             .OrderBy(x => x.SentAtUtc)
             .ToListAsync(cancellationToken);
     }
+
+    public Task<bool> ExistsAsync(
+        Guid clinicId,
+        string externalMessageId,
+        CancellationToken cancellationToken = default)
+    {
+        return dbContext.Messages
+            .AnyAsync(x => x.ClinicId == clinicId && x.ExternalMessageId == externalMessageId, cancellationToken);
+    }
+
+    public Task<Message?> GetLastInboundAsync(
+        Guid clinicId,
+        Guid conversationId,
+        CancellationToken cancellationToken = default)
+    {
+        return dbContext.Messages
+            .Where(x => x.ClinicId == clinicId && x.ConversationId == conversationId && x.SenderType == "Customer")
+            .OrderByDescending(x => x.SentAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
 }

@@ -6,4 +6,5 @@ public sealed record ReceiveMessageCommand(
     string ExternalConversationId,
     string CustomerDisplayName,
     string Text,
-    DateTimeOffset ReceivedAt);
+    DateTimeOffset ReceivedAt,
+    string? ExternalMessageId = null);

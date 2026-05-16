@@ -1,3 +1,4 @@
+using ClinicMateAI.Application.Abstractions.Messaging;
 using ClinicMateAI.Application.Abstractions.Persistence;
 using ClinicMateAI.Application.Ai;
 using ClinicMateAI.Application.Messaging;
@@ -6,23 +7,32 @@ using ClinicMateAI.Logic.Ai;
 using ClinicMateAI.Logic.Messaging;
 using FluentAssertions;
 using FluentValidation;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ClinicMateAI.Tests.Messaging;
 
 public class ReceiveMessageHandlerTests
 {
+    private static ReceiveMessageHandler CreateHandler(
+        InMemoryConversationRepository conversationRepository,
+        InMemoryMessageRepository messageRepository,
+        FakeUnitOfWork unitOfWork)
+        => new(
+            new ReceiveMessageCommandValidator(),
+            conversationRepository,
+            messageRepository,
+            new SimulatedAiReplyProvider(),
+            new NullInboxNotifier(),
+            unitOfWork,
+            NullLogger<ReceiveMessageHandler>.Instance);
+
     [Fact]
     public async Task HandleAsync_ThrowsValidationException_WhenCommandIsInvalid()
     {
         var conversationRepository = new InMemoryConversationRepository();
         var messageRepository = new InMemoryMessageRepository();
         var unitOfWork = new FakeUnitOfWork();
-        var handler = new ReceiveMessageHandler(
-            new ReceiveMessageCommandValidator(),
-            conversationRepository,
-            messageRepository,
-            new SimulatedAiReplyProvider(),
-            unitOfWork);
+        var handler = CreateHandler(conversationRepository, messageRepository, unitOfWork);
 
         var command = new ReceiveMessageCommand(
             ClinicId: Guid.Empty,
@@ -45,12 +55,7 @@ public class ReceiveMessageHandlerTests
         var conversationRepository = new InMemoryConversationRepository();
         var messageRepository = new InMemoryMessageRepository();
         var unitOfWork = new FakeUnitOfWork();
-        var handler = new ReceiveMessageHandler(
-            new ReceiveMessageCommandValidator(),
-            conversationRepository,
-            messageRepository,
-            new SimulatedAiReplyProvider(),
-            unitOfWork);
+        var handler = CreateHandler(conversationRepository, messageRepository, unitOfWork);
 
         var result = await handler.HandleAsync(new ReceiveMessageCommand(
             ClinicId: clinicId,
@@ -83,12 +88,7 @@ public class ReceiveMessageHandlerTests
         var conversationRepository = new InMemoryConversationRepository([conversation]);
         var messageRepository = new InMemoryMessageRepository();
         var unitOfWork = new FakeUnitOfWork();
-        var handler = new ReceiveMessageHandler(
-            new ReceiveMessageCommandValidator(),
-            conversationRepository,
-            messageRepository,
-            new SimulatedAiReplyProvider(),
-            unitOfWork);
+        var handler = CreateHandler(conversationRepository, messageRepository, unitOfWork);
 
         var now = DateTimeOffset.UtcNow;
         var result = await handler.HandleAsync(new ReceiveMessageCommand(
@@ -135,6 +135,11 @@ public class ReceiveMessageHandlerTests
             return Task.FromResult(Items.FirstOrDefault(x => x.ClinicId == clinicId && x.Id == conversationId));
         }
 
+        public Task<Conversation?> GetByIdAsync(Guid clinicId, Guid branchId, Guid conversationId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Items.FirstOrDefault(x => x.ClinicId == clinicId && x.BranchId == branchId && x.Id == conversationId));
+        }
+
         public Task<Conversation?> GetByExternalIdAsync(
             Guid clinicId,
             string channel,
@@ -145,10 +150,39 @@ public class ReceiveMessageHandlerTests
                 x.ClinicId == clinicId && x.Channel == channel && x.ExternalConversationId == externalConversationId));
         }
 
+        public Task<Conversation?> GetByExternalIdAsync(
+            Guid clinicId,
+            Guid branchId,
+            string channel,
+            string externalConversationId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Items.FirstOrDefault(x =>
+                x.ClinicId == clinicId
+                && x.BranchId == branchId
+                && x.Channel == channel
+                && x.ExternalConversationId == externalConversationId));
+        }
+
         public Task<IReadOnlyList<Conversation>> ListRecentAsync(Guid clinicId, int take, CancellationToken cancellationToken = default)
         {
             IReadOnlyList<Conversation> result = Items
                 .Where(x => x.ClinicId == clinicId)
+                .OrderByDescending(x => x.LastMessageAtUtc)
+                .Take(take)
+                .ToList();
+            return Task.FromResult(result);
+        }
+
+        public Task<IReadOnlyList<Conversation>> ListRecentAsync(Guid clinicId, Guid? branchId, int take, CancellationToken cancellationToken = default)
+        {
+            var query = Items.Where(x => x.ClinicId == clinicId);
+            if (branchId is not null)
+            {
+                query = query.Where(x => x.BranchId == branchId.Value);
+            }
+
+            IReadOnlyList<Conversation> result = query
                 .OrderByDescending(x => x.LastMessageAtUtc)
                 .Take(take)
                 .ToList();
@@ -192,5 +226,24 @@ public class ReceiveMessageHandlerTests
                 .ToList();
             return Task.FromResult(result);
         }
+
+        public Task<bool> ExistsAsync(Guid clinicId, string externalMessageId, CancellationToken cancellationToken = default)
+            => Task.FromResult(Items.Any(x => x.ClinicId == clinicId && x.ExternalMessageId == externalMessageId));
+
+        public Task<Message?> GetLastInboundAsync(Guid clinicId, Guid conversationId, CancellationToken cancellationToken = default)
+        {
+            Message? result = Items
+                .Where(x => x.ClinicId == clinicId && x.ConversationId == conversationId && x.SenderType == "Customer")
+                .OrderByDescending(x => x.SentAtUtc)
+                .FirstOrDefault();
+            return Task.FromResult(result);
+        }
+    }
+
+    private sealed class NullInboxNotifier : IInboxNotifier
+    {
+        public Task NotifyConversationUpdatedAsync(Guid clinicId, ConversationUpdatedEvent evt, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task NotifyNewMessageAsync(Guid clinicId, Guid conversationId, NewMessageEvent evt, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task NotifyConversationClaimedAsync(Guid clinicId, ConversationClaimedEvent evt, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }

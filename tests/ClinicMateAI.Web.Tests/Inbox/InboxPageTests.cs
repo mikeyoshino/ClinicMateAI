@@ -10,7 +10,7 @@ namespace ClinicMateAI.Web.Tests.Inbox;
 public class InboxPageTests : BunitContext
 {
     [Fact]
-    public void Inbox_LoadsClinicsAndConversations_OnInitialize()
+    public void Inbox_LoadsConversations_OnInitialize()
     {
         var clinicId = Guid.Parse("11111111-1111-1111-1111-111111111111");
         var handler = new RoutingHttpMessageHandler(new Dictionary<string, HttpResponseMessage>
@@ -18,8 +18,8 @@ public class InboxPageTests : BunitContext
             ["/api/inbox/clinics"] = JsonResponse("""
                 [{"clinicId":"11111111-1111-1111-1111-111111111111","name":"Demo Clinic"}]
                 """),
-            [$"/api/inbox/conversations?clinicId={clinicId}&take=50"] = JsonResponse("""
-                [{"conversationId":"22222222-2222-2222-2222-222222222222","channel":"LINE","externalConversationId":"line-1","customerDisplayName":"Customer A"}]
+            [$"/api/inbox/conversations?clinicId={clinicId}&take=100"] = JsonResponse("""
+                [{"conversationId":"22222222-2222-2222-2222-222222222222","channel":"LINE","externalConversationId":"line-1","customerDisplayName":"Customer A","status":"Open","aiStatus":"None","isRead":false,"unreadCount":1,"lastMessageAtUtc":"2026-05-15T10:00:00Z","lastMessagePreview":"Hello"}]
                 """)
         });
 
@@ -32,9 +32,8 @@ public class InboxPageTests : BunitContext
 
         cut.WaitForAssertion(() =>
         {
-            cut.Markup.Should().Contain("Demo Clinic");
             cut.Markup.Should().Contain("Customer A");
-            cut.Markup.Should().NotContain("Failed to load clinics");
+            cut.Markup.Should().NotContain("กำลังโหลด");
         });
     }
 
@@ -55,7 +54,7 @@ public class InboxPageTests : BunitContext
 
         cut.WaitForAssertion(() =>
         {
-            cut.Markup.Should().Contain("Failed to load clinics (500).");
+            cut.Markup.Should().Contain("ไม่สามารถโหลดข้อมูลคลินิกได้");
         });
     }
 
@@ -69,8 +68,8 @@ public class InboxPageTests : BunitContext
             ["/api/inbox/clinics"] = JsonResponse("""
                 [{"clinicId":"11111111-1111-1111-1111-111111111111","name":"Demo Clinic"}]
                 """),
-            [$"/api/inbox/conversations?clinicId={clinicId}&take=50"] = JsonResponse("""
-                [{"conversationId":"22222222-2222-2222-2222-222222222222","channel":"LINE","externalConversationId":"line-1","customerDisplayName":"Customer A"}]
+            [$"/api/inbox/conversations?clinicId={clinicId}&take=100"] = JsonResponse("""
+                [{"conversationId":"22222222-2222-2222-2222-222222222222","channel":"LINE","externalConversationId":"line-1","customerDisplayName":"Customer A","status":"Open","aiStatus":"None","isRead":true,"unreadCount":0,"lastMessageAtUtc":"2026-05-15T10:00:00Z","lastMessagePreview":"Hello"}]
                 """),
             [$"/api/inbox/conversations/{conversationId}/messages?clinicId={clinicId}"] = JsonResponse("""
                 [{"senderType":"Customer","text":"Hello","sentAtUtc":"2026-05-15T10:00:00Z"}]
@@ -85,7 +84,7 @@ public class InboxPageTests : BunitContext
         var cut = Render<global::ClinicMateAI.Web.Components.Pages.Inbox>();
         cut.WaitForAssertion(() => cut.Markup.Should().Contain("Customer A"));
 
-        cut.FindAll("button.list-group-item-action").First().Click();
+        cut.FindAll(".conv-item").First().Click();
 
         cut.WaitForAssertion(() =>
         {
@@ -94,7 +93,7 @@ public class InboxPageTests : BunitContext
     }
 
     [Fact]
-    public void Inbox_ShowsError_WhenTakeIsOutOfRange()
+    public void Inbox_ShowsEmptyState_WhenNoConversations()
     {
         var clinicId = Guid.Parse("11111111-1111-1111-1111-111111111111");
         var handler = new RoutingHttpMessageHandler(new Dictionary<string, HttpResponseMessage>
@@ -102,7 +101,7 @@ public class InboxPageTests : BunitContext
             ["/api/inbox/clinics"] = JsonResponse("""
                 [{"clinicId":"11111111-1111-1111-1111-111111111111","name":"Demo Clinic"}]
                 """),
-            [$"/api/inbox/conversations?clinicId={clinicId}&take=50"] = JsonResponse("[]")
+            [$"/api/inbox/conversations?clinicId={clinicId}&take=100"] = JsonResponse("[]")
         });
 
         Services.AddSingleton<IHttpClientFactory>(new TestHttpClientFactory(new HttpClient(handler)
@@ -111,14 +110,10 @@ public class InboxPageTests : BunitContext
         }));
 
         var cut = Render<global::ClinicMateAI.Web.Components.Pages.Inbox>();
-        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Demo Clinic"));
-
-        cut.Find("#takeInput").Change("0");
-        cut.Find("button.btn.btn-primary").Click();
 
         cut.WaitForAssertion(() =>
         {
-            cut.Markup.Should().Contain("Take must be between 1 and 200.");
+            cut.Markup.Should().Contain("ไม่มีการสนทนา");
         });
     }
 

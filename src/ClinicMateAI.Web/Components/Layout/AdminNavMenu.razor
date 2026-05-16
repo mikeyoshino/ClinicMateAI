@@ -1,0 +1,103 @@
+﻿@implements IDisposable
+@inject NavigationManager NavigationManager
+
+<div class="admin-menu-header">
+    <div class="admin-menu-logo">CM</div>
+    <div>
+        <div class="admin-menu-title">ClinicMateAI</div>
+        <div class="admin-menu-badge">Platform Admin</div>
+    </div>
+</div>
+
+<button class="admin-navbar-toggler" type="button" title="Toggle navigation" @onclick="ToggleMenu">
+    <span></span>
+    <span></span>
+    <span></span>
+</button>
+
+<div class="admin-nav-scrollable @(isMenuOpen ? "open" : string.Empty)">
+    <nav class="admin-nav-list">
+
+        <NavLink class="admin-nav-link" href="/admin" Match="NavLinkMatch.All">
+            <span class="nav-label-th">ภาพรวมแพลตฟอร์ม</span>
+            <span class="nav-label-en">Platform Overview</span>
+        </NavLink>
+
+        <span class="admin-nav-section-label">
+            <span class="nav-label-th">จัดการคลินิก</span>
+            <span class="nav-label-en">Clinic Management</span>
+        </span>
+        <NavLink class="admin-nav-link" href="/admin/clinics">
+            <span class="nav-label-th">รายการคลินิก</span>
+            <span class="nav-label-en">Clinics</span>
+        </NavLink>
+        <NavLink class="admin-nav-link" href="/admin/packages">
+            <span class="nav-label-th">แพ็กเกจ &amp; โควตา</span>
+            <span class="nav-label-en">Packages &amp; Quota</span>
+        </NavLink>
+
+        <span class="admin-nav-section-label">
+            <span class="nav-label-th">ระบบ</span>
+            <span class="nav-label-en">System</span>
+        </span>
+        <NavLink class="admin-nav-link" href="/admin/users">
+            <span class="nav-label-th">ผู้ใช้งาน &amp; สิทธิ์</span>
+            <span class="nav-label-en">Users &amp; Roles</span>
+        </NavLink>
+        <NavLink class="admin-nav-link" href="/admin/audit">
+            <span class="nav-label-th">บันทึกการใช้งาน</span>
+            <span class="nav-label-en">Audit Log</span>
+        </NavLink>
+        <NavLink class="admin-nav-link" href="/admin/settings">
+            <span class="nav-label-th">การตั้งค่าระบบ</span>
+            <span class="nav-label-en">System Settings</span>
+        </NavLink>
+
+        <div class="admin-nav-divider"></div>
+
+        <AuthorizeView>
+            <Authorized>
+                <NavLink class="admin-nav-link admin-user-link" href="Account/Manage">
+                    @context.User.Identity?.Name
+                </NavLink>
+                <form action="Account/Logout" method="post" class="admin-logout-form">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                    <button type="submit" class="admin-nav-link admin-logout-button">
+                        <span class="nav-label-th">ออกจากระบบ</span>
+                        <span class="nav-label-en">Logout</span>
+                    </button>
+                </form>
+            </Authorized>
+            <NotAuthorized>
+                <NavLink class="admin-nav-link admin-user-link" href="Account/Login">
+                    <span class="nav-label-th">เข้าสู่ระบบ</span>
+                    <span class="nav-label-en">Login</span>
+                </NavLink>
+            </NotAuthorized>
+        </AuthorizeView>
+
+    </nav>
+</div>
+
+@code {
+    private string? currentUrl;
+    private bool isMenuOpen;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        isMenuOpen = false;
+        StateHasChanged();
+    }
+
+    private void ToggleMenu() => isMenuOpen = !isMenuOpen;
+
+    public void Dispose() => NavigationManager.LocationChanged -= OnLocationChanged;
+}

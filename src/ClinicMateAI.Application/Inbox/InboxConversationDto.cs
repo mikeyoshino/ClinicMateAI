@@ -6,4 +6,10 @@ public sealed record InboxConversationDto(
     string ExternalConversationId,
     string CustomerDisplayName,
     string Status,
-    DateTime LastMessageAtUtc);
+    string AiStatus,
+    bool IsRead,
+    int UnreadCount,
+    string? AssignedStaff,
+    DateTime? ClaimedAt,
+    DateTime LastMessageAtUtc,
+    string LastMessagePreview);

@@ -38,7 +38,7 @@ public class InboxEndpointsTests
         var clinicA = Guid.NewGuid();
         var clinicB = Guid.NewGuid();
 
-        var aResponse = await client.PostAsJsonAsync("/webhooks/line", new
+        var aResponse = await client.PostAsJsonAsync("/webhooks/facebook", new
         {
             clinicId = clinicA,
             externalConversationId = "line-a",
@@ -48,7 +48,7 @@ public class InboxEndpointsTests
         });
         aResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var bResponse = await client.PostAsJsonAsync("/webhooks/line", new
+        var bResponse = await client.PostAsJsonAsync("/webhooks/facebook", new
         {
             clinicId = clinicB,
             externalConversationId = "line-b",
@@ -82,7 +82,7 @@ public class InboxEndpointsTests
 
         var clinicId = Guid.NewGuid();
 
-        var oldResponse = await client.PostAsJsonAsync("/webhooks/line", new
+        var oldResponse = await client.PostAsJsonAsync("/webhooks/facebook", new
         {
             clinicId,
             externalConversationId = "line-old",
@@ -92,7 +92,7 @@ public class InboxEndpointsTests
         });
         oldResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var newResponse = await client.PostAsJsonAsync("/webhooks/line", new
+        var newResponse = await client.PostAsJsonAsync("/webhooks/facebook", new
         {
             clinicId,
             externalConversationId = "line-new",

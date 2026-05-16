@@ -15,6 +15,20 @@ public sealed class ClinicServiceRepository(AppDbContext dbContext) : IClinicSer
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<ClinicService>> ListByClinicAsync(Guid clinicId, Guid? branchId, CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.Services.Where(x => x.ClinicId == clinicId);
+
+        if (branchId is not null)
+        {
+            query = query.Where(x => x.BranchId == null || x.BranchId == branchId.Value);
+        }
+
+        return await query
+            .OrderBy(x => x.Name)
+            .ToListAsync(cancellationToken);
+    }
+
     public Task AddAsync(ClinicService service, CancellationToken cancellationToken = default)
     {
         return dbContext.Services.AddAsync(service, cancellationToken).AsTask();

@@ -13,6 +13,20 @@ public sealed class PromotionService(
         CancellationToken cancellationToken = default)
     {
         var promotions = await promotionRepository.ListByClinicAsync(clinicId, cancellationToken);
+        return MapList(promotions);
+    }
+
+    public async Task<IReadOnlyList<PromotionManageDto>> ListByClinicAsync(
+        Guid clinicId,
+        Guid? branchId,
+        CancellationToken cancellationToken = default)
+    {
+        var promotions = await promotionRepository.ListByClinicAsync(clinicId, branchId, cancellationToken);
+        return MapList(promotions);
+    }
+
+    private static IReadOnlyList<PromotionManageDto> MapList(IReadOnlyList<Promotion> promotions)
+    {
         return promotions
             .OrderByDescending(x => x.StartsOn)
             .ThenBy(x => x.Name)

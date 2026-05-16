@@ -1,0 +1,66 @@
+@page "/admin"
+@layout AdminLayout
+
+<PageTitle>ภาพรวมแพลตฟอร์ม - ClinicMateAI</PageTitle>
+
+<div class="admin-stat-grid">
+    <article class="admin-stat-card">
+        <p class="admin-stat-label">คลินิกทั้งหมด</p>
+        <h2 class="admin-stat-value">12</h2>
+        <p class="admin-stat-note">+2 เดือนนี้</p>
+    </article>
+    <article class="admin-stat-card">
+        <p class="admin-stat-label">คลินิกที่ใช้งานอยู่</p>
+        <h2 class="admin-stat-value">10</h2>
+        <p class="admin-stat-note">2 คลินิกหมดสัญญา</p>
+    </article>
+    <article class="admin-stat-card admin-stat-warn">
+        <p class="admin-stat-label">ใกล้เกินโควตา AI</p>
+        <h2 class="admin-stat-value">2</h2>
+        <p class="admin-stat-note">ต้องอัปเกรดแพ็กเกจ</p>
+    </article>
+    <article class="admin-stat-card">
+        <p class="admin-stat-label">AI Calls เดือนนี้</p>
+        <h2 class="admin-stat-value">38,420</h2>
+        <p class="admin-stat-note">จาก 80,000 รวมระบบ</p>
+    </article>
+</div>
+
+<section class="admin-panel">
+    <header class="admin-panel-header">
+        <span>สถานะคลินิกล่าสุด</span>
+        <a class="admin-panel-action" href="/admin/clinics">ดูทั้งหมด →</a>
+    </header>
+    <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>คลินิก</th>
+                    <th>แพ็กเกจ</th>
+                    <th>AI Used</th>
+                    <th>สถานะ</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Demo Clinic</td>
+                    <td>Pro Clinic</td>
+                    <td>450 / 8,000</td>
+                    <td><span class="badge text-bg-success">ปกติ</span></td>
+                </tr>
+                <tr>
+                    <td>Smile Beauty</td>
+                    <td>Growth</td>
+                    <td>2,940 / 3,000</td>
+                    <td><span class="badge text-bg-danger">ใกล้เกินโควตา</span></td>
+                </tr>
+                <tr>
+                    <td>Glow Studio</td>
+                    <td>Starter</td>
+                    <td>820 / 1,000</td>
+                    <td><span class="badge text-bg-warning">ใกล้เต็ม</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>

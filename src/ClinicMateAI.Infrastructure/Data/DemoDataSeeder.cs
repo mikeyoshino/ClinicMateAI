@@ -1,5 +1,6 @@
 using ClinicMateAI.Domain.Clinics;
 using ClinicMateAI.Domain.Messaging;
+using ClinicMateAI.Domain.Packages;
 using ClinicMateAI.Domain.Promotions;
 using ClinicMateAI.Domain.Services;
 using Microsoft.EntityFrameworkCore;
@@ -25,11 +26,27 @@ public static class DemoDataSeeder
             Phone = "02-000-0000",
             MapUrl = "https://maps.example/demo-clinic"
         };
+        clinic.SetPackageContract(PackageTier.Starter, null);
+
+        var defaultBranch = new Branch
+        {
+            Id = Guid.Parse("aaaaaaaa-1111-1111-1111-111111111111"),
+            ClinicId = clinic.Id,
+            Name = "สาขาหลัก",
+            Address = clinic.Address,
+            Phone = clinic.Phone,
+            MapUrl = clinic.MapUrl,
+            BusinessHours = "Mon-Sun 10:00-19:00",
+            IsDefault = true,
+            Status = BranchStatus.Active,
+            CreatedAtUtc = clinic.CreatedAtUtc
+        };
 
         var conversation = new Conversation
         {
             Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
             ClinicId = clinic.Id,
+            BranchId = defaultBranch.Id,
             Channel = "LINE",
             CustomerDisplayName = "คุณมิน",
             Status = "Open",
@@ -37,9 +54,11 @@ public static class DemoDataSeeder
         };
 
         db.Clinics.Add(clinic);
+        db.Branches.Add(defaultBranch);
         db.Services.Add(new ClinicService
         {
             ClinicId = clinic.Id,
+            BranchId = defaultBranch.Id,
             Name = "Botox Jaw",
             Category = "Injectables",
             StartingPrice = 2999,
@@ -50,6 +69,7 @@ public static class DemoDataSeeder
         db.Promotions.Add(new Promotion
         {
             ClinicId = clinic.Id,
+            BranchId = defaultBranch.Id,
             Name = "Botox Jaw New Customer",
             RelatedServiceName = "Botox Jaw",
             PromoPrice = 2999,
@@ -62,6 +82,7 @@ public static class DemoDataSeeder
         db.Promotions.Add(new Promotion
         {
             ClinicId = clinic.Id,
+            BranchId = defaultBranch.Id,
             Name = "Laser Bright Draft",
             RelatedServiceName = "Laser",
             PromoPrice = 1990,

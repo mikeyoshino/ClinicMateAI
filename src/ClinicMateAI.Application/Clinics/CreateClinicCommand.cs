@@ -1,3 +1,5 @@
+using ClinicMateAI.Domain.Packages;
+
 namespace ClinicMateAI.Application.Clinics;
 
 public sealed record CreateClinicCommand(
@@ -5,4 +7,6 @@ public sealed record CreateClinicCommand(
     string Address,
     string Phone,
     string? MapUrl,
-    string Status);
+    string Status,
+    PackageTier PackageTier,
+    decimal? AdditionalBranchMonthlyPrice = null);

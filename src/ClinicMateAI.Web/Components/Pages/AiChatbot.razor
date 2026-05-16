@@ -1,0 +1,176 @@
+@page "/clinic/ai-chatbot"
+@layout ClinicLayout
+@inject ClinicMateAI.Web.Services.ToastService Toast
+
+<PageTitle>ตั้งค่า AI Chatbot - ClinicMateAI</PageTitle>
+
+<div class="chatbot-grid">
+
+    <section class="cm-panel">
+        <header class="cm-panel-header d-flex justify-content-between align-items-center">
+            <span>บุคลิกและโทนเสียง AI</span>
+            <span class="badge text-bg-success">ใช้งานอยู่</span>
+        </header>
+        <div class="chatbot-panel-body">
+            <div class="chatbot-field">
+                <label class="chatbot-label">ชื่อผู้ช่วย AI *</label>
+                <p class="chatbot-hint">ชื่อที่ AI จะแนะนำตัวเองกับลูกค้า</p>
+                <input type="text" class="form-control @(_nameError ? "is-invalid" : "")"
+                       @bind="_assistantName" @bind:event="oninput" />
+                @if (_nameError)
+                {
+                    <div class="invalid-feedback">กรุณากรอกชื่อผู้ช่วย AI</div>
+                }
+            </div>
+            <div class="chatbot-field">
+                <label class="chatbot-label">โทนเสียงและบุคลิก</label>
+                <p class="chatbot-hint">กำหนดลักษณะการสื่อสารของ AI กับลูกค้า</p>
+                <select class="form-select" @bind="_tone">
+                    <option value="friendly">สุภาพ อบอุ่น เป็นมิตร (แนะนำ)</option>
+                    <option value="professional">มืออาชีพ ตรงไปตรงมา</option>
+                    <option value="casual">เป็นกันเอง สนุกสนาน</option>
+                </select>
+            </div>
+            <div class="chatbot-field">
+                <label class="chatbot-label">คำแนะนำพิเศษสำหรับ AI</label>
+                <p class="chatbot-hint">บริบทเพิ่มเติมที่ AI ควรรู้เกี่ยวกับคลินิก</p>
+                <textarea class="form-control" rows="3"
+                          placeholder="เช่น คลินิกเน้นบริการลูกค้า VIP ควรสุภาพเป็นพิเศษ"
+                          @bind="_specialNote"></textarea>
+            </div>
+        </div>
+    </section>
+
+    <section class="cm-panel">
+        <header class="cm-panel-header d-flex justify-content-between align-items-center">
+            <span>แหล่งข้อมูล AI</span>
+            <span class="badge text-bg-secondary">4 แหล่ง</span>
+        </header>
+        <div class="chatbot-panel-body">
+            <div class="chatbot-source-item chatbot-source-active">
+                <div class="chatbot-source-dot chatbot-dot-green"></div>
+                <div>
+                    <div class="chatbot-source-name">บริการและราคา</div>
+                    <div class="chatbot-source-note">อัปเดตล่าสุด: วันนี้</div>
+                </div>
+            </div>
+            <div class="chatbot-source-item chatbot-source-active">
+                <div class="chatbot-source-dot chatbot-dot-green"></div>
+                <div>
+                    <div class="chatbot-source-name">โปรโมชันที่เผยแพร่</div>
+                    <div class="chatbot-source-note">3 โปรโมชันที่ใช้งานได้</div>
+                </div>
+            </div>
+            <div class="chatbot-source-item chatbot-source-active">
+                <div class="chatbot-source-dot chatbot-dot-green"></div>
+                <div>
+                    <div class="chatbot-source-name">คำถามพบบ่อย (FAQ)</div>
+                    <div class="chatbot-source-note">12 คำถาม</div>
+                </div>
+            </div>
+            <div class="chatbot-source-item chatbot-source-inactive">
+                <div class="chatbot-source-dot chatbot-dot-gray"></div>
+                <div>
+                    <div class="chatbot-source-name">ตารางว่างหมอ</div>
+                    <div class="chatbot-source-note">ยังไม่เชื่อมต่อ Google Calendar</div>
+                </div>
+                <a class="chatbot-source-link" href="/clinic/integrations">ตั้งค่า</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="cm-panel">
+        <header class="cm-panel-header d-flex justify-content-between align-items-center">
+            <span>กฎความปลอดภัย AI</span>
+            <span class="badge text-bg-warning text-dark">สำคัญ</span>
+        </header>
+        <div class="chatbot-panel-body">
+            <p class="chatbot-safety-note">
+                กฎเหล่านี้บังคับใช้เสมอและไม่สามารถปิดได้ AI จะส่งต่อเคสทันทีเมื่อตรวจพบสัญญาณอันตราย
+            </p>
+            <ul class="chatbot-safety-list">
+                <li>AI ไม่วินิจฉัยโรคหรือแนะนำยา</li>
+                <li>AI ไม่รับประกันผลลัพธ์การรักษา</li>
+                <li>AI ส่งต่อทันทีเมื่อพบคำว่า: แพ้, บวมมาก, เลือดออก, ปวดมาก ฯลฯ</li>
+                <li>AI ไม่สร้างราคาหรือโปรโมชันเอง</li>
+            </ul>
+            <a class="chatbot-safety-edit" href="/clinic/setup">จัดการกฎความปลอดภัยเพิ่มเติม →</a>
+        </div>
+    </section>
+
+    <section class="cm-panel">
+        <header class="cm-panel-header d-flex justify-content-between align-items-center">
+            <span>พฤติกรรมการตอบกลับ</span>
+        </header>
+        <div class="chatbot-panel-body">
+            <div class="chatbot-toggle-row">
+                <div>
+                    <div class="chatbot-toggle-label">ตอบกลับอัตโนมัติ</div>
+                    <div class="chatbot-toggle-hint">AI ตอบลูกค้าทันทีโดยไม่รอแอดมิน</div>
+                </div>
+                <input type="checkbox" class="form-check-input chatbot-toggle" @bind="_autoReply" />
+            </div>
+            <div class="chatbot-toggle-row">
+                <div>
+                    <div class="chatbot-toggle-label">ร่างคำตอบให้แอดมินอนุมัติ</div>
+                    <div class="chatbot-toggle-hint">AI ร่างข้อความ แอดมินกดส่งเอง</div>
+                </div>
+                <input type="checkbox" class="form-check-input chatbot-toggle" @bind="_draftMode" />
+            </div>
+            <div class="chatbot-toggle-row">
+                <div>
+                    <div class="chatbot-toggle-label">ส่งต่อเคสซับซ้อนให้แอดมิน</div>
+                    <div class="chatbot-toggle-hint">เมื่อ AI ไม่มั่นใจจะแจ้งเตือนแอดมิน</div>
+                </div>
+                <input type="checkbox" class="form-check-input chatbot-toggle" @bind="_escalateComplex" />
+            </div>
+        </div>
+    </section>
+
+</div>
+
+<div class="chatbot-actions">
+    <button class="btn btn-outline-secondary" type="button" @onclick="ResetForm">ยกเลิก</button>
+    <button class="btn btn-primary" type="button" @onclick="SaveSettings" disabled="@_saving">
+        @if (_saving)
+        {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        }
+        บันทึกการตั้งค่า
+    </button>
+</div>
+
+@code {
+    private string _assistantName = "น้องเมย์";
+    private string _tone = "friendly";
+    private string _specialNote = "";
+    private bool _autoReply = true;
+    private bool _draftMode = false;
+    private bool _escalateComplex = true;
+
+    private bool _saving = false;
+    private bool _nameError = false;
+
+    private async Task SaveSettings()
+    {
+        _nameError = string.IsNullOrWhiteSpace(_assistantName);
+        if (_nameError) return;
+
+        _saving = true;
+        await Task.Delay(600); // placeholder for real save call
+        _saving = false;
+
+        Toast.Success("บันทึกการตั้งค่าเรียบร้อยแล้ว");
+    }
+
+    private void ResetForm()
+    {
+        _assistantName = "น้องเมย์";
+        _tone = "friendly";
+        _specialNote = "";
+        _autoReply = true;
+        _draftMode = false;
+        _escalateComplex = true;
+        _nameError = false;
+    }
+}

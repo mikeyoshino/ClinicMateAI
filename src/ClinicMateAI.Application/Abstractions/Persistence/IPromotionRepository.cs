@@ -8,9 +8,20 @@ public interface IPromotionRepository
         Guid clinicId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Promotion>> ListByClinicAsync(
+        Guid clinicId,
+        Guid? branchId,
+        CancellationToken cancellationToken = default);
+
     Task<Promotion?> GetByIdAsync(
         Guid clinicId,
         Guid promotionId,
+        CancellationToken cancellationToken = default);
+
+    Task<Promotion?> GetByIdAsync(
+        Guid clinicId,
+        Guid promotionId,
+        Guid? branchId,
         CancellationToken cancellationToken = default);
 
     Task AddAsync(

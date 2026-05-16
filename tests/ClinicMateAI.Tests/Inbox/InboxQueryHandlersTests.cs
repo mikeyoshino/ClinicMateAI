@@ -4,6 +4,7 @@ using ClinicMateAI.Domain.Clinics;
 using ClinicMateAI.Domain.Messaging;
 using ClinicMateAI.Logic.Inbox;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ClinicMateAI.Tests.Inbox;
 
@@ -31,7 +32,7 @@ public class InboxQueryHandlersTests
     {
         var clinicId = Guid.NewGuid();
         var repo = new FakeConversationRepository();
-        var handler = new GetInboxConversationsHandler(repo);
+        var handler = new GetInboxConversationsHandler(repo, new FakeMessageRepository([]), NullLogger<GetInboxConversationsHandler>.Instance);
 
         await handler.HandleAsync(new GetInboxConversationsQuery(clinicId, Take: 0));
 
@@ -43,7 +44,7 @@ public class InboxQueryHandlersTests
     {
         var clinicId = Guid.NewGuid();
         var repo = new FakeConversationRepository();
-        var handler = new GetInboxConversationsHandler(repo);
+        var handler = new GetInboxConversationsHandler(repo, new FakeMessageRepository([]), NullLogger<GetInboxConversationsHandler>.Instance);
 
         await handler.HandleAsync(new GetInboxConversationsQuery(clinicId, Take: 999));
 
@@ -182,10 +183,24 @@ public class InboxQueryHandlersTests
             return Task.FromResult(_items.FirstOrDefault(x => x.ClinicId == clinicId && x.Id == conversationId));
         }
 
+        public Task<Conversation?> GetByIdAsync(Guid clinicId, Guid branchId, Guid conversationId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_items.FirstOrDefault(x => x.ClinicId == clinicId && x.BranchId == branchId && x.Id == conversationId));
+        }
+
         public Task<Conversation?> GetByExternalIdAsync(Guid clinicId, string channel, string externalConversationId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(_items.FirstOrDefault(x =>
                 x.ClinicId == clinicId &&
+                x.Channel == channel &&
+                x.ExternalConversationId == externalConversationId));
+        }
+
+        public Task<Conversation?> GetByExternalIdAsync(Guid clinicId, Guid branchId, string channel, string externalConversationId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_items.FirstOrDefault(x =>
+                x.ClinicId == clinicId &&
+                x.BranchId == branchId &&
                 x.Channel == channel &&
                 x.ExternalConversationId == externalConversationId));
         }
@@ -195,6 +210,22 @@ public class InboxQueryHandlersTests
             LastTake = take;
             IReadOnlyList<Conversation> result = _items
                 .Where(x => x.ClinicId == clinicId)
+                .OrderByDescending(x => x.LastMessageAtUtc)
+                .Take(take)
+                .ToList();
+            return Task.FromResult(result);
+        }
+
+        public Task<IReadOnlyList<Conversation>> ListRecentAsync(Guid clinicId, Guid? branchId, int take, CancellationToken cancellationToken = default)
+        {
+            LastTake = take;
+            var query = _items.Where(x => x.ClinicId == clinicId);
+            if (branchId is not null)
+            {
+                query = query.Where(x => x.BranchId == branchId.Value);
+            }
+
+            IReadOnlyList<Conversation> result = query
                 .OrderByDescending(x => x.LastMessageAtUtc)
                 .Take(take)
                 .ToList();
@@ -233,6 +264,18 @@ public class InboxQueryHandlersTests
                 .Where(x => x.ClinicId == clinicId && x.ConversationId == conversationId)
                 .OrderBy(x => x.SentAtUtc)
                 .ToList();
+            return Task.FromResult(result);
+        }
+
+        public Task<bool> ExistsAsync(Guid clinicId, string externalMessageId, CancellationToken cancellationToken = default)
+            => Task.FromResult(_items.Any(x => x.ClinicId == clinicId && x.ExternalMessageId == externalMessageId));
+
+        public Task<Message?> GetLastInboundAsync(Guid clinicId, Guid conversationId, CancellationToken cancellationToken = default)
+        {
+            Message? result = _items
+                .Where(x => x.ClinicId == clinicId && x.ConversationId == conversationId && x.SenderType == "Customer")
+                .OrderByDescending(x => x.SentAtUtc)
+                .FirstOrDefault();
             return Task.FromResult(result);
         }
     }

@@ -1,35 +1,752 @@
-@page "/integrations"
+@page "/clinic/integrations"
+@layout ClinicLayout
+@using System.Net
+@using System.Net.Http.Json
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using ClinicMateAI.Application.Setup
+@using ClinicMateAI.Domain.Clinics
+@using ClinicMateAI.Web.Endpoints
+@using Microsoft.Extensions.Logging
+@inject IHttpClientFactory HttpClientFactory
+@inject ILogger<Integrations> Logger
+@inject NavigationManager NavigationManager
 
-<PageTitle>Integrations</PageTitle>
+<PageTitle>การเชื่อมต่อ - ClinicMateAI</PageTitle>
 
-<section class="cm-panel">
-    <header class="cm-panel-header">สถานะการเชื่อมต่อ</header>
-    <div class="table-responsive">
-        <table class="table mb-0 align-middle">
-            <thead>
-                <tr>
-                    <th>ระบบ</th>
-                    <th>สถานะ</th>
-                    <th>รายละเอียด</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>LINE OA</td>
-                    <td><span class="badge text-bg-success">เชื่อมต่อแล้ว</span></td>
-                    <td>Webhook พร้อมรับข้อความ</td>
-                </tr>
-                <tr>
-                    <td>Facebook Messenger</td>
-                    <td><span class="badge text-bg-warning">รอตั้งค่า</span></td>
-                    <td>ยังไม่ใส่ Access Token</td>
-                </tr>
-                <tr>
-                    <td>Google Calendar</td>
-                    <td><span class="badge text-bg-success">เชื่อมต่อแล้ว</span></td>
-                    <td>ซิงก์ตารางนัดทุก 5 นาที</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+<section class="integrations-page">
+    <header class="integrations-hero">
+        <div>
+            <p class="integrations-eyebrow">ช่องทางลูกค้า</p>
+            <h2>เชื่อมต่อ LINE และ Facebook สำหรับคลินิก</h2>
+            <p class="integrations-copy">ตรวจสอบสถานะการเชื่อมต่อของแต่ละช่องทาง แล้วดำเนินการต่อจากการ์ดได้ทันทีค่ะ</p>
+        </div>
+    </header>
+
+    @if (isLoading)
+    {
+        <div class="integration-state">กำลังโหลดข้อมูลการเชื่อมต่อ...</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="integration-state integration-state--error">@errorMessage</div>
+    }
+    else
+    {
+        <div class="integration-grid">
+            @foreach (var channel in channels)
+            {
+                <article class="integration-card">
+                    <div class="integration-card__header">
+                        <div class="integration-logo @GetLogoClass(channel.Channel)">
+                            @if (channel.Channel == "LINE")
+                            {
+                                <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
+                                </svg>
+                            }
+                            else if (channel.Channel == "FACEBOOK")
+                            {
+                                <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                                </svg>
+                            }
+                        </div>
+                        <div class="integration-card__body">
+                            <h3>@GetThaiTitle(channel.Channel)</h3>
+                            <p>@channel.Summary</p>
+                        </div>
+                        <span class="@GetBadgeClass(channel.Status)">@GetThaiStatus(channel.Status)</span>
+                    </div>
+
+                    <dl class="integration-card__meta">
+                        <div>
+                            <dt>สถานะล่าสุด</dt>
+                            <dd>@GetHelperText(channel)</dd>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(channel.LastError))
+                        {
+                            <div>
+                                <dt>ปัญหาที่พบ</dt>
+                                <dd>@channel.LastError</dd>
+                            </div>
+                        }
+                    </dl>
+
+                    <div class="integration-card__actions">
+                        @if (GetSecondaryAction(channel.Status) is { } secondaryAction)
+                        {
+                            <button class="integration-button integration-button--ghost" type="button" @onclick="async () => await OpenWizardAsync(channel.Channel, secondaryAction, shouldStartFacebookFlow: false)">
+                                @secondaryAction
+                            </button>
+                        }
+
+                        <button class="integration-button" type="button" @onclick="async () => await OpenWizardAsync(channel.Channel, GetPrimaryAction(channel.Status), shouldStartFacebookFlow: ShouldStartFacebookFlow(channel.Status))">
+                            @GetPrimaryAction(channel.Status)
+                        </button>
+                    </div>
+                </article>
+            }
+        </div>
+    }
 </section>
+
+@if (isWizardOpen)
+{
+    <div class="integration-modal-backdrop" @onclick="CloseWizard"></div>
+    <section class="integration-modal" aria-labelledby="@modalTitleId" aria-modal="true" role="dialog">
+        <header class="integration-modal__header">
+            <div>
+                <p class="integration-modal__eyebrow">ตัวช่วยเชื่อมต่อช่องทาง</p>
+                <h3 id="@modalTitleId">@GetWizardTitle()</h3>
+                <p>@GetWizardDescription()</p>
+            </div>
+            <button class="integration-modal__close" type="button" aria-label="ปิด" @onclick="CloseWizard">×</button>
+        </header>
+
+        <div class="integration-modal__step">
+            <span>ขั้นตอน @activeStep จาก @GetWizardTotalSteps()</span>
+            <div class="integration-modal__progress">
+                @foreach (var step in Enumerable.Range(1, GetWizardTotalSteps()))
+                {
+                    <span class="@(activeStep >= step ? "is-active" : null)"></span>
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(wizardErrorMessage))
+        {
+            <div class="integration-alert integration-alert--error">@wizardErrorMessage</div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(wizardSuccessMessage))
+        {
+            <div class="integration-alert integration-alert--success">@wizardSuccessMessage</div>
+        }
+
+        @if (IsLineWizard)
+        {
+            <div class="integration-modal__content">
+                <div class="integration-modal__panel">
+                    <h4>1. ตั้งค่า Webhook URL</h4>
+                    <p>คัดลอก URL นี้ไปวางใน LINE Developers แล้วเปิดใช้ Webhook ให้เรียบร้อยก่อนทดสอบนะคะ</p>
+                    <div class="integration-code-block">@GetLineWebhookUrl()</div>
+                    <ol class="integration-steps-list">
+                        <li>เข้า LINE Developers ของคลินิก</li>
+                        <li>วาง Webhook URL แล้วเปิด Use webhook</li>
+                        <li>กด Verify ใน LINE ก่อนกลับมาบันทึกและทดสอบ</li>
+                    </ol>
+                </div>
+
+                <div class="integration-modal__panel">
+                    @if (lineWizardCompleted)
+                    {
+                        <div class="integration-complete">
+                            <h4>เชื่อมต่อ LINE สำเร็จ</h4>
+                            <p>ทดสอบการเชื่อมต่อผ่านแล้ว ระบบพร้อมรับข้อความจาก LINE OA ของคลินิกค่ะ</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <h4>2. กรอกข้อมูล LINE OA</h4>
+                        <div class="integration-field">
+                            <label for="line-channel-secret">Channel Secret *</label>
+                            <input id="line-channel-secret" value="@lineChannelSecret" @oninput="OnLineChannelSecretChanged" autocomplete="off" />
+                            <small>ใช้ค่าจากแท็บ Messaging API ของ LINE OA</small>
+                            @if (lineSubmitAttempted && string.IsNullOrWhiteSpace(lineChannelSecret))
+                            {
+                                <span class="integration-field__error">กรุณากรอก Channel Secret ค่ะ</span>
+                            }
+                        </div>
+                        <div class="integration-field">
+                            <label for="line-access-token">Channel Access Token *</label>
+                            <input id="line-access-token" value="@lineAccessToken" @oninput="OnLineAccessTokenChanged" autocomplete="off" />
+                            <small>วาง Access Token แบบยาวสำหรับส่งข้อความตอบกลับ</small>
+                            @if (lineSubmitAttempted && string.IsNullOrWhiteSpace(lineAccessToken))
+                            {
+                                <span class="integration-field__error">กรุณากรอก Channel Access Token ค่ะ</span>
+                            }
+                        </div>
+                        <p class="integration-modal__helper">เมื่อกดบันทึก ระบบจะบันทึกค่าและทดสอบการเชื่อมต่อกับ endpoint จริงทันทีค่ะ</p>
+                    }
+                </div>
+
+                <div class="integration-modal__panel">
+                    <h4>สถานะตอนนี้</h4>
+                    <p>@GetActiveChannelSummary()</p>
+                    <p class="integration-modal__helper">@GetLineStatusHelper()</p>
+                </div>
+            </div>
+        }
+        else if (IsFacebookWizard)
+        {
+            <div class="integration-modal__content">
+                <div class="integration-modal__panel">
+                    <h4>1. เชื่อมต่อกับ Facebook</h4>
+                    @if (isWizardBusy && string.IsNullOrWhiteSpace(facebookAuthorizationUrl) && !facebookWizardCompleted)
+                    {
+                        <p>กำลังสร้างลิงก์เชื่อมต่อ Facebook ให้คลินิกค่ะ...</p>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(facebookAuthorizationUrl))
+                    {
+                        <p>กดเปิดลิงก์ด้านล่างเพื่ออนุญาตสิทธิ์เพจ จากนั้นคัดลอกรหัสกลับมากรอกในช่องด้านขวาค่ะ</p>
+                        <a class="integration-link" href="@facebookAuthorizationUrl" target="_blank" rel="noreferrer">เชื่อมต่อกับ Facebook</a>
+                        <div class="integration-code-block">@facebookAuthorizationUrl</div>
+                    }
+                    else
+                    {
+                        <p>ยังไม่สามารถสร้างลิงก์เชื่อมต่อได้ กดปุ่มลองใหม่อีกครั้งได้เลยค่ะ</p>
+                    }
+                </div>
+
+                <div class="integration-modal__panel">
+                    @if (facebookWizardCompleted)
+                    {
+                        <div class="integration-complete">
+                            <h4>เชื่อมต่อ Facebook สำเร็จ</h4>
+                            <p>ระบบบันทึกการเชื่อมต่อเพจเรียบร้อยแล้ว พร้อมใช้งานสำหรับ Messenger ของคลินิกค่ะ</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <h4>2. กรอก Authorization Code</h4>
+                        <div class="integration-field">
+                            <label for="facebook-authorization-code">Authorization Code *</label>
+                            <input id="facebook-authorization-code" value="@facebookAuthorizationCode" @oninput="OnFacebookAuthorizationCodeChanged" autocomplete="off" />
+                            <small>ในโหมดเดโม สามารถใช้รหัสใดก็ได้ที่ไม่ว่างเพื่อทดสอบการเชื่อมต่อ</small>
+                            @if (facebookSubmitAttempted && string.IsNullOrWhiteSpace(facebookAuthorizationCode))
+                            {
+                                <span class="integration-field__error">กรุณากรอก Authorization Code ค่ะ</span>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="integration-modal__panel">
+                    <h4>สถานะตอนนี้</h4>
+                    <p>@GetActiveChannelSummary()</p>
+                    <p class="integration-modal__helper">@GetFacebookStatusHelper()</p>
+                </div>
+            </div>
+        }
+
+        <footer class="integration-modal__actions">
+            <button class="integration-button integration-button--ghost" type="button" @onclick="CloseWizard">ปิดหน้าต่าง</button>
+            <button class="integration-button" type="button" disabled="@isWizardBusy" @onclick="HandleWizardPrimaryActionAsync">
+                @GetPrimaryWizardAction()
+            </button>
+        </footer>
+    </section>
+}
+
+@code {
+    private static readonly Guid DemoClinicId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private static readonly Guid DemoBranchId = Guid.Parse("aaaaaaaa-1111-1111-1111-111111111111");
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
+
+    private readonly List<ClinicIntegrationChannelDto> channels = [];
+    private const string modalTitleId = "integration-modal-title";
+    private bool isLoading = true;
+    private string? errorMessage;
+    private bool isWizardOpen;
+    private bool isWizardBusy;
+    private bool lineSubmitAttempted;
+    private bool facebookSubmitAttempted;
+    private bool lineWizardCompleted;
+    private bool facebookWizardCompleted;
+    private string activeChannel = string.Empty;
+    private string activeActionLabel = string.Empty;
+    private int activeStep = 1;
+    private string? wizardErrorMessage;
+    private string? wizardSuccessMessage;
+    private string lineChannelSecret = string.Empty;
+    private string lineAccessToken = string.Empty;
+    private string? facebookAuthorizationUrl;
+    private string facebookAuthorizationCode = string.Empty;
+
+    private bool IsLineWizard => string.Equals(activeChannel, "LINE", StringComparison.OrdinalIgnoreCase);
+    private bool IsFacebookWizard => string.Equals(activeChannel, "Facebook", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadChannelsAsync();
+    }
+
+    private async Task LoadChannelsAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var url = NavigationManager.ToAbsoluteUri($"/api/integrations/overview?clinicId={DemoClinicId}").ToString();
+            var response = await client.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage = $"ไม่สามารถโหลดข้อมูลการเชื่อมต่อได้ ({(int)response.StatusCode})";
+                return;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<List<ClinicIntegrationChannelDto>>(JsonOptions);
+            channels.Clear();
+            if (result is not null)
+            {
+                channels.AddRange(result);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load integration overview for clinic {ClinicId}", DemoClinicId);
+            errorMessage = "ไม่สามารถโหลดข้อมูลการเชื่อมต่อได้";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OpenWizardAsync(string channel, string actionLabel, bool shouldStartFacebookFlow)
+    {
+        ResetWizardState();
+        activeChannel = channel;
+        activeActionLabel = actionLabel;
+        isWizardOpen = true;
+        activeStep = 1;
+
+        if (IsFacebookChannel(channel) && shouldStartFacebookFlow)
+        {
+            await StartFacebookConnectionAsync();
+        }
+    }
+
+    private void CloseWizard()
+    {
+        isWizardOpen = false;
+        ResetWizardState();
+        activeChannel = string.Empty;
+        activeActionLabel = string.Empty;
+        activeStep = 1;
+    }
+
+    private void ResetWizardState()
+    {
+        isWizardBusy = false;
+        lineSubmitAttempted = false;
+        facebookSubmitAttempted = false;
+        lineWizardCompleted = false;
+        facebookWizardCompleted = false;
+        wizardErrorMessage = null;
+        wizardSuccessMessage = null;
+        lineChannelSecret = string.Empty;
+        lineAccessToken = string.Empty;
+        facebookAuthorizationUrl = null;
+        facebookAuthorizationCode = string.Empty;
+    }
+
+    private async Task HandleWizardPrimaryActionAsync()
+    {
+        if (lineWizardCompleted || facebookWizardCompleted)
+        {
+            CloseWizard();
+            return;
+        }
+
+        if (IsLineWizard)
+        {
+            await SaveAndTestLineAsync();
+            return;
+        }
+
+        if (IsFacebookWizard)
+        {
+            if (string.IsNullOrWhiteSpace(facebookAuthorizationUrl))
+            {
+                await StartFacebookConnectionAsync();
+                return;
+            }
+
+            await CompleteFacebookConnectionAsync();
+        }
+    }
+
+    private async Task SaveAndTestLineAsync()
+    {
+        lineSubmitAttempted = true;
+        wizardErrorMessage = null;
+        wizardSuccessMessage = null;
+
+        if (string.IsNullOrWhiteSpace(lineChannelSecret) || string.IsNullOrWhiteSpace(lineAccessToken))
+        {
+            activeStep = 2;
+            return;
+        }
+
+        isWizardBusy = true;
+        activeStep = 2;
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var saveResponse = await client.PostAsJsonAsync(GetApiUrl("/api/integrations/line/save"), new IntegrationEndpoints.SaveLineChannelConfigRequest(
+                DemoClinicId,
+                DemoBranchId,
+                lineChannelSecret.Trim(),
+                lineAccessToken.Trim()));
+
+            if (!saveResponse.IsSuccessStatusCode)
+            {
+                wizardErrorMessage = await CreateApiErrorMessageAsync(
+                    saveResponse,
+                    "บันทึกข้อมูล LINE ไม่สำเร็จ กรุณาตรวจสอบ Channel Secret และ Channel Access Token แล้วลองอีกครั้งค่ะ");
+                return;
+            }
+
+            var testResponse = await client.PostAsJsonAsync(GetApiUrl("/api/integrations/line/test"), new IntegrationEndpoints.TestLineChannelConfigRequest(DemoClinicId));
+            if (!testResponse.IsSuccessStatusCode)
+            {
+                wizardErrorMessage = await CreateApiErrorMessageAsync(
+                    testResponse,
+                    "ทดสอบ LINE ไม่ผ่าน กรุณาตรวจสอบ Webhook URL และข้อมูล LINE OA แล้วลองอีกครั้งค่ะ");
+                return;
+            }
+
+            var result = await testResponse.Content.ReadFromJsonAsync<LineTestResponse>(JsonOptions);
+            if (result is null || !result.IsSuccess)
+            {
+                wizardErrorMessage = !string.IsNullOrWhiteSpace(result?.ErrorMessage)
+                    ? $"ทดสอบ LINE ไม่ผ่าน: {result.ErrorMessage}"
+                    : "ทดสอบ LINE ไม่ผ่าน กรุณาตรวจสอบ Webhook URL และข้อมูล LINE OA แล้วลองอีกครั้งค่ะ";
+                return;
+            }
+
+            lineWizardCompleted = true;
+            wizardSuccessMessage = "เชื่อมต่อ LINE สำเร็จ";
+            activeStep = 3;
+            await LoadChannelsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to save and test LINE config for clinic {ClinicId}", DemoClinicId);
+            wizardErrorMessage = "บันทึกและทดสอบ LINE ไม่สำเร็จ กรุณาลองอีกครั้งค่ะ";
+        }
+        finally
+        {
+            isWizardBusy = false;
+        }
+    }
+
+    private async Task StartFacebookConnectionAsync()
+    {
+        wizardErrorMessage = null;
+        wizardSuccessMessage = null;
+        isWizardBusy = true;
+        activeStep = 1;
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var response = await client.GetAsync(GetApiUrl($"/api/integrations/facebook/start?clinicId={DemoClinicId}"));
+
+            if (!response.IsSuccessStatusCode)
+            {
+                wizardErrorMessage = await CreateApiErrorMessageAsync(
+                    response,
+                    "ไม่สามารถสร้างลิงก์เชื่อมต่อ Facebook ได้ กรุณาลองใหม่อีกครั้งค่ะ");
+                return;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<StartFacebookConnectionResult>(JsonOptions);
+            if (result is null || string.IsNullOrWhiteSpace(result.AuthorizationUrl))
+            {
+                wizardErrorMessage = "ระบบยังไม่ได้ลิงก์เชื่อมต่อ Facebook กรุณาลองใหม่อีกครั้งค่ะ";
+                return;
+            }
+
+            facebookAuthorizationUrl = result.AuthorizationUrl;
+            activeStep = 2;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to start Facebook connection for clinic {ClinicId}", DemoClinicId);
+            wizardErrorMessage = "ไม่สามารถสร้างลิงก์เชื่อมต่อ Facebook ได้ กรุณาลองใหม่อีกครั้งค่ะ";
+        }
+        finally
+        {
+            isWizardBusy = false;
+        }
+    }
+
+    private async Task CompleteFacebookConnectionAsync()
+    {
+        facebookSubmitAttempted = true;
+        wizardErrorMessage = null;
+        wizardSuccessMessage = null;
+
+        if (string.IsNullOrWhiteSpace(facebookAuthorizationCode))
+        {
+            activeStep = 2;
+            return;
+        }
+
+        isWizardBusy = true;
+        activeStep = 2;
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var response = await client.PostAsJsonAsync(GetApiUrl("/api/integrations/facebook/complete"), new IntegrationEndpoints.CompleteFacebookConnectionRequest(
+                DemoClinicId,
+                facebookAuthorizationCode.Trim()));
+
+            if (!response.IsSuccessStatusCode)
+            {
+                wizardErrorMessage = await CreateApiErrorMessageAsync(
+                    response,
+                    "ยืนยันการเชื่อมต่อ Facebook ไม่สำเร็จ กรุณาตรวจสอบ Authorization Code แล้วลองอีกครั้งค่ะ");
+                return;
+            }
+
+            facebookWizardCompleted = true;
+            wizardSuccessMessage = "เชื่อมต่อ Facebook สำเร็จ";
+            activeStep = 3;
+            await LoadChannelsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to complete Facebook connection for clinic {ClinicId}", DemoClinicId);
+            wizardErrorMessage = "ยืนยันการเชื่อมต่อ Facebook ไม่สำเร็จ กรุณาลองอีกครั้งค่ะ";
+        }
+        finally
+        {
+            isWizardBusy = false;
+        }
+    }
+
+    private async Task<string> CreateApiErrorMessageAsync(HttpResponseMessage response, string fallback)
+    {
+        var details = await ReadApiMessageAsync(response);
+        return string.IsNullOrWhiteSpace(details)
+            ? fallback
+            : $"{fallback} รายละเอียด: {details}";
+    }
+
+    private static async Task<string?> ReadApiMessageAsync(HttpResponseMessage response)
+    {
+        if (response.Content is null)
+        {
+            return null;
+        }
+
+        var content = await response.Content.ReadAsStringAsync();
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(content);
+            var root = document.RootElement;
+
+            if (root.ValueKind == JsonValueKind.Object)
+            {
+                if (root.TryGetProperty("message", out var messageElement) && messageElement.ValueKind == JsonValueKind.String)
+                {
+                    return messageElement.GetString();
+                }
+
+                if (root.TryGetProperty("errors", out var errorsElement) && errorsElement.ValueKind == JsonValueKind.Object)
+                {
+                    var messages = errorsElement.EnumerateObject()
+                        .SelectMany(property => property.Value.ValueKind == JsonValueKind.Array
+                            ? property.Value.EnumerateArray().Select(item => item.GetString())
+                            : [property.Value.GetString()])
+                        .Where(message => !string.IsNullOrWhiteSpace(message))
+                        .ToArray();
+
+                    if (messages.Length > 0)
+                    {
+                        return string.Join(" ", messages);
+                    }
+                }
+            }
+
+            if (root.ValueKind == JsonValueKind.String)
+            {
+                return root.GetString();
+            }
+        }
+        catch (JsonException)
+        {
+            return content;
+        }
+
+        return response.StatusCode == HttpStatusCode.NotFound ? "ไม่พบข้อมูลที่ต้องใช้ในการเชื่อมต่อ" : content;
+    }
+
+    private void OnLineChannelSecretChanged(ChangeEventArgs args)
+    {
+        lineChannelSecret = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void OnLineAccessTokenChanged(ChangeEventArgs args)
+    {
+        lineAccessToken = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void OnFacebookAuthorizationCodeChanged(ChangeEventArgs args)
+    {
+        facebookAuthorizationCode = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private string GetThaiTitle(string channel)
+        => channel.ToUpperInvariant() switch
+        {
+            "LINE" => "LINE OA",
+            "FACEBOOK" => "Facebook Messenger",
+            _ => channel
+        };
+
+    private static string GetLogoLabel(string channel)
+        => channel.ToUpperInvariant() switch
+        {
+            "LINE" => "LINE",
+            "FACEBOOK" => "f",
+            _ => channel[..Math.Min(3, channel.Length)].ToUpperInvariant()
+        };
+
+    private static string GetLogoClass(string channel)
+        => channel.ToUpperInvariant() switch
+        {
+            "LINE" => "integration-logo--line",
+            "FACEBOOK" => "integration-logo--facebook",
+            _ => string.Empty
+        };
+
+    private static string GetThaiStatus(ChannelConnectionStatus status)
+        => status switch
+        {
+            ChannelConnectionStatus.Connected => "เชื่อมต่อแล้ว",
+            ChannelConnectionStatus.PendingVerification => "รอตรวจสอบ",
+            ChannelConnectionStatus.ReconnectRequired => "ต้องเชื่อมต่อใหม่",
+            ChannelConnectionStatus.Error => "พบปัญหา",
+            _ => "ยังไม่เชื่อมต่อ"
+        };
+
+    private static string GetPrimaryAction(ChannelConnectionStatus status)
+        => status switch
+        {
+            ChannelConnectionStatus.PendingVerification => "ดำเนินการต่อ",
+            ChannelConnectionStatus.Connected => "ดูรายละเอียด",
+            ChannelConnectionStatus.ReconnectRequired => "เชื่อมต่อใหม่",
+            ChannelConnectionStatus.Error => "ลองอีกครั้ง",
+            _ => "เชื่อมต่อ"
+        };
+
+    private static string? GetSecondaryAction(ChannelConnectionStatus status)
+        => status switch
+        {
+            ChannelConnectionStatus.Connected => "แก้ไขการตั้งค่า",
+            ChannelConnectionStatus.PendingVerification => "ดูขั้นตอน",
+            ChannelConnectionStatus.ReconnectRequired => "ดูปัญหา",
+            ChannelConnectionStatus.Error => "ดูปัญหา",
+            _ => null
+        };
+
+    private static string GetBadgeClass(ChannelConnectionStatus status)
+        => $"integration-badge {status switch
+        {
+            ChannelConnectionStatus.Connected => "integration-badge--connected",
+            ChannelConnectionStatus.PendingVerification => "integration-badge--pending",
+            ChannelConnectionStatus.ReconnectRequired => "integration-badge--warning",
+            ChannelConnectionStatus.Error => "integration-badge--error",
+            _ => "integration-badge--idle"
+        }}";
+
+    private static string GetHelperText(ClinicIntegrationChannelDto channel)
+    {
+        if (channel.LastVerifiedAtUtc.HasValue)
+        {
+            return $"ตรวจสอบล่าสุด {channel.LastVerifiedAtUtc.Value.ToLocalTime():dd/MM/yyyy HH:mm}";
+        }
+
+        return channel.IsEnabled
+            ? "พร้อมใช้งานสำหรับรับข้อความ"
+            : "ยังต้องตั้งค่าให้ครบก่อนเปิดใช้งาน";
+    }
+
+    private string GetWizardTitle()
+        => $"{GetActiveActionLabel()} {GetThaiTitle(activeChannel)}";
+
+    private string GetWizardDescription()
+        => activeChannel.ToUpperInvariant() switch
+        {
+            "LINE" => "กรอกข้อมูล LINE OA แล้วบันทึกพร้อมทดสอบการเชื่อมต่อจากหน้าต่างนี้ได้เลยค่ะ",
+            "FACEBOOK" => "ระบบจะสร้างลิงก์เชื่อมต่อ Facebook ให้ แล้วให้คลินิกนำรหัสกลับมายืนยันต่อได้ทันทีค่ะ",
+            _ => "เริ่มตั้งค่าช่องทางนี้ด้วยขั้นตอนแบบทีละส่วนสำหรับทีมคลินิกค่ะ"
+        };
+
+    private string GetActiveChannelSummary()
+        => channels.FirstOrDefault(x => string.Equals(x.Channel, activeChannel, StringComparison.OrdinalIgnoreCase))?.Summary
+            ?? "ยังไม่มีข้อมูลสถานะของช่องทางนี้";
+
+    private string GetActiveActionLabel()
+        => !string.IsNullOrWhiteSpace(activeActionLabel)
+            ? activeActionLabel
+            : GetPrimaryAction(GetActiveStatus());
+
+    private ChannelConnectionStatus GetActiveStatus()
+        => channels.FirstOrDefault(x => string.Equals(x.Channel, activeChannel, StringComparison.OrdinalIgnoreCase))?.Status
+            ?? ChannelConnectionStatus.NotConnected;
+
+    private int GetWizardTotalSteps() => 3;
+
+    private string GetPrimaryWizardAction()
+    {
+        if (lineWizardCompleted || facebookWizardCompleted)
+        {
+            return "เสร็จสิ้น";
+        }
+
+        if (IsLineWizard)
+        {
+            return isWizardBusy ? "กำลังบันทึก..." : "บันทึกและทดสอบ";
+        }
+
+        if (IsFacebookWizard && string.IsNullOrWhiteSpace(facebookAuthorizationUrl))
+        {
+            return isWizardBusy ? "กำลังเตรียม..." : "ลองดึงลิงก์อีกครั้ง";
+        }
+
+        return isWizardBusy ? "กำลังยืนยัน..." : "ยืนยันการเชื่อมต่อ";
+    }
+
+    private string GetLineWebhookUrl()
+        => NavigationManager.ToAbsoluteUri($"/webhooks/line/{DemoClinicId}").ToString();
+
+    private string GetLineStatusHelper()
+        => lineWizardCompleted
+            ? "ทดสอบการเชื่อมต่อผ่านแล้ว ระบบพร้อมใช้งานค่ะ"
+            : "หลังบันทึก ระบบจะเรียก /api/integrations/line/test ให้ทันทีเพื่อยืนยันว่าค่าใช้งานได้จริง";
+
+    private string GetFacebookStatusHelper()
+        => facebookWizardCompleted
+            ? "เชื่อมต่อเพจเรียบร้อยแล้ว สามารถกลับไปติดตามภาพรวมได้เลยค่ะ"
+            : "เมื่อได้ Authorization Code แล้ว กดยืนยันเพื่อให้ระบบเรียก /api/integrations/facebook/complete ให้ทันที";
+
+    private string GetApiUrl(string relativePath)
+        => NavigationManager.ToAbsoluteUri(relativePath).ToString();
+
+    private static bool ShouldStartFacebookFlow(ChannelConnectionStatus status)
+        => status is not ChannelConnectionStatus.Connected;
+
+    private static bool IsFacebookChannel(string channel)
+        => string.Equals(channel, "Facebook", StringComparison.OrdinalIgnoreCase);
+
+    private sealed record LineTestResponse(bool IsSuccess, string ErrorMessage);
+}

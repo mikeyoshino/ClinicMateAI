@@ -6,6 +6,11 @@ public interface IPromotionService
         Guid clinicId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<PromotionManageDto>> ListByClinicAsync(
+        Guid clinicId,
+        Guid? branchId,
+        CancellationToken cancellationToken = default);
+
     Task PublishAsync(
         Guid clinicId,
         Guid promotionId,

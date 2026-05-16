@@ -10,10 +10,14 @@ public sealed class CreateClinicHandler(
 {
     public async Task<CreateClinicResultDto> HandleAsync(CreateClinicCommand command, CancellationToken cancellationToken = default)
     {
-        var status = Enum.TryParse<ClinicStatus>(command.Status, true, out var parsed) ? parsed : ClinicStatus.Active;
+        if (string.IsNullOrWhiteSpace(command.Status) ||
+            !Enum.TryParse<ClinicStatus>(command.Status.Trim(), true, out var status))
+        {
+            throw new ArgumentException("Status must be a valid clinic status.", nameof(command.Status));
+        }
+
         var clinic = new Clinic
         {
-            Id = Guid.NewGuid(),
             Name = command.Name.Trim(),
             Address = command.Address.Trim(),
             Phone = command.Phone.Trim(),
@@ -21,6 +25,7 @@ public sealed class CreateClinicHandler(
             CreatedAtUtc = DateTime.UtcNow,
             Status = status
         };
+        clinic.SetPackageContract(command.PackageTier, command.AdditionalBranchMonthlyPrice);
 
         await clinicRepository.AddAsync(clinic, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);

@@ -1,4 +1,6 @@
 using ClinicMateAI.Application.Clinics;
+using ClinicMateAI.Domain.Clinics;
+using ClinicMateAI.Domain.Packages;
 
 namespace ClinicMateAI.Web.Endpoints;
 
@@ -36,6 +38,16 @@ public static class ClinicsEndpoints
             if (string.IsNullOrWhiteSpace(request.Name)) errors["name"] = ["name is required."];
             if (string.IsNullOrWhiteSpace(request.Address)) errors["address"] = ["address is required."];
             if (string.IsNullOrWhiteSpace(request.Phone)) errors["phone"] = ["phone is required."];
+            if (string.IsNullOrWhiteSpace(request.Status) || !Enum.TryParse<ClinicStatus>(request.Status.Trim(), true, out _))
+            {
+                errors["status"] = ["status must be a valid clinic status."];
+            }
+
+            if (!Enum.IsDefined(request.PackageTier)) errors["packageTier"] = ["packageTier must be a valid package tier."];
+            if (request.AdditionalBranchMonthlyPrice < 0)
+            {
+                errors["additionalBranchMonthlyPrice"] = ["additionalBranchMonthlyPrice cannot be negative."];
+            }
 
             if (errors.Count > 0)
             {
@@ -48,9 +60,11 @@ public static class ClinicsEndpoints
                     request.Address,
                     request.Phone,
                     request.MapUrl,
-                    request.Status),
+                    request.Status,
+                    request.PackageTier,
+                    request.AdditionalBranchMonthlyPrice),
                 cancellationToken);
-            return Results.Ok(result);
+            return Results.Created($"/api/clinics/{result.ClinicId}", result);
         });
 
         return endpoints;
@@ -61,5 +75,7 @@ public static class ClinicsEndpoints
         string Address,
         string Phone,
         string? MapUrl,
-        string Status = "Active");
+        string Status = "Active",
+        PackageTier PackageTier = PackageTier.Starter,
+        decimal? AdditionalBranchMonthlyPrice = null);
 }

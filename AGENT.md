@@ -113,6 +113,85 @@ Build the working MVP first. Do not add these unless explicitly requested:
 
 The MVP should run locally with demo data and simulated providers before real external credentials exist.
 
+## User Roles
+
+| Role | Thai | Access |
+|---|---|---|
+| Platform Admin | ผู้ดูแลแพลตฟอร์ม | All admin routes `/admin/*`; full clinic management, package assignment, usage tracking |
+| Clinic Owner | เจ้าของคลินิก | All clinic routes `/clinic/*`; full clinic config, approve & publish |
+| Clinic Admin | แอดมินคลินิก | Clinic routes; inbox, appointments, update service/promo data if permitted |
+| Doctor / Specialist | แพทย์ / ผู้เชี่ยวชาญ | View assigned appointments, escalated cases, contribute FAQ/aftercare content |
+| Staff | เจ้าหน้าที่ | View appointments, basic inbox actions if permitted |
+
+Roles are not yet implemented as Identity roles but planned. Route guards and policy enforcement will be added after domain foundation is complete.
+
+## Packages And Quotas (Admin-Only)
+
+| Package | Price | AI Replies/month | Admins | Services | Channels |
+|---|---|---|---|---|---|
+| Starter | 1,990 THB/mo | 1,000 | 1 | 20 | LINE |
+| Growth | 4,900 THB/mo | 3,000 | 3 | 50 | LINE + Facebook |
+| Pro Clinic | 9,900 THB/mo | 8,000 | 10 | Unlimited | LINE + Facebook |
+| Enterprise | 15,000+ THB/mo | Custom | Custom | Custom | Custom |
+
+Clinic users do not see package pricing or quota assignment screens in the MVP. Over-quota warnings go to Platform Admin only.
+
+## App Sections Structure
+
+The app has two separate sections sharing the same backend (Clean Architecture layers):
+
+### Clinic Section — for clinic staff
+
+- Layout: `ClinicLayout.razor` — white sidebar, teal accent (`#0f766e`)
+- Nav component: `ClinicNavMenu.razor`
+- Default route: `/` and `/clinic/dashboard`
+- Nav sections and routes:
+
+| Section label | Routes |
+|---|---|
+| (top-level) | `/clinic/dashboard` |
+| ปฏิบัติการ | `/clinic/inbox`, `/clinic/appointments`, `/clinic/promotions` |
+| AI & อัตโนมัติ | `/clinic/ai-chatbot`, `/clinic/ai-test` |
+| ตั้งค่า | `/clinic/setup`, `/clinic/integrations` |
+
+### Platform Admin Section — for ClinicMateAI operators
+
+- Layout: `AdminLayout.razor` — dark slate sidebar (`#0f172a`), indigo accent (`#6366f1`)
+- Nav component: `AdminNavMenu.razor`
+- Default route: `/admin`
+- Nav sections and routes:
+
+| Section label | Routes |
+|---|---|
+| (top-level) | `/admin` |
+| จัดการคลินิก | `/admin/clinics`, `/admin/clinics/create`, `/admin/packages` |
+| ระบบ | `/admin/users`, `/admin/audit`, `/admin/settings` |
+
+### Layout rules
+
+- Every page must declare `@layout AdminLayout` or `@layout ClinicLayout` explicitly.
+- `MainLayout` is the default fallback for auth/account pages only.
+- `Routes.razor` uses `DefaultLayout="typeof(Layout.ClinicLayout)"`.
+- All pages must declare `@using ClinicMateAI.Web.Components.Layout` (already in `_Imports.razor`).
+- Always add the new route → Thai title to the layout's `GetHeaderTitle()` switch when adding a page.
+- New clinic features belong under the appropriate `ClinicNavMenu` section. New sections use `<span class="nav-section-label">`.
+- New admin features belong under the appropriate `AdminNavMenu` section.
+
+## Bilingual UI Convention
+
+Nav labels and section headers must always show **Thai as primary** and **English as secondary**:
+
+```html
+<span class="nav-label-th">กล่องข้อความ</span>
+<span class="nav-label-en">Inbox</span>
+```
+
+- Thai: font-size `0.875rem`, primary text color.
+- English: font-size `0.72rem`, muted/secondary color.
+- Form labels and page copy: Thai-first; English translation shown where helpful for multi-lingual staff.
+- Error messages and validation: Thai.
+- Code identifiers (routes, variables, CSS classes): English only.
+
 ## Blazor And UI Rules
 
 Use `Docs/UIDesignIdea.html` as the required visual reference.

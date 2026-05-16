@@ -1,3 +1,5 @@
+using ClinicMateAI.Domain.Clinics;
+using ClinicMateAI.Domain.Promotions;
 using ClinicMateAI.Infrastructure.Data;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -7,38 +9,30 @@ namespace ClinicMateAI.Tests.Data;
 public class DemoDataSeederTests
 {
     [Fact]
-    public async Task SeedAsync_CreatesBeautyClinicWithPublishedPromotion()
+    public async Task SeedAsync_CreatesDefaultBranch_AndAttachesSeedDataToIt()
     {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        await using var db = new AppDbContext(options);
-        await db.Database.EnsureCreatedAsync();
+        await using var db = CreateDb();
 
         await DemoDataSeeder.SeedAsync(db);
 
-        db.Clinics.Should().ContainSingle(c => c.Name == "Demo Aesthetic Clinic");
-        db.Services.Should().Contain(s => s.Name == "Botox Jaw");
-        db.Promotions.Should().Contain(p => p.Name == "Botox Jaw New Customer");
+        var clinic = await db.Clinics.SingleAsync();
+        var branch = await db.Branches.SingleAsync();
+        var service = await db.Services.SingleAsync();
+        var promotion = await db.Promotions.SingleAsync(x => x.Status == PromotionStatus.Published);
+        var conversation = await db.Conversations.SingleAsync();
+
+        branch.ClinicId.Should().Be(clinic.Id);
+        branch.IsDefault.Should().BeTrue();
+        service.BranchId.Should().Be(branch.Id);
+        promotion.BranchId.Should().Be(branch.Id);
+        conversation.BranchId.Should().Be(branch.Id);
     }
 
-    [Fact]
-    public async Task SeedAsync_LinksClinicOwnedDemoDataToClinicId()
+    private static AppDbContext CreateDb()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-
-        await using var db = new AppDbContext(options);
-        await db.Database.EnsureCreatedAsync();
-
-        await DemoDataSeeder.SeedAsync(db);
-
-        var clinic = db.Clinics.Should().ContainSingle().Subject;
-        db.Services.Should().OnlyContain(service => service.ClinicId == clinic.Id);
-        db.Promotions.Should().OnlyContain(promotion => promotion.ClinicId == clinic.Id);
-        db.Conversations.Should().OnlyContain(conversation => conversation.ClinicId == clinic.Id);
-        db.Messages.Should().OnlyContain(message => message.ClinicId == clinic.Id);
+        return new AppDbContext(options);
     }
 }

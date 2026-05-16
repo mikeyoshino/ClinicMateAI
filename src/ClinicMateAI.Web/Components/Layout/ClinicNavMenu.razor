@@ -1,0 +1,131 @@
+﻿@implements IDisposable
+@inject NavigationManager NavigationManager
+
+<div class="sidebar-brand">
+    <div class="brand-icon">
+        <Heroicon Name="@HeroiconName.CpuChip" Type="HeroiconType.Outline" />
+    </div>
+    <div>
+        <h1 class="brand-title">ClinicMate<span class="brand-accent">AI</span></h1>
+        <p class="brand-subtitle">MVP Version</p>
+    </div>
+</div>
+
+<button class="navbar-toggler" type="button" title="Toggle navigation" @onclick="ToggleNavigation">
+    <Heroicon Name="@HeroiconName.Bars3" Type="HeroiconType.Mini" />
+</button>
+
+<nav class="nav-scrollable @(isMenuOpen ? "open" : string.Empty)">
+    <div class="nav-section nav-section--main">
+        <NavLink class="cm-nav-link" href="/clinic/dashboard" Match="NavLinkMatch.All">
+            <span class="cm-nav-icon"><Heroicon Name="@HeroiconName.Squares2x2" Type="HeroiconType.Outline" /></span>
+            <span class="cm-nav-text">ภาพรวม (Dashboard)</span>
+        </NavLink>
+
+        <NavLink class="cm-nav-link" href="/clinic/inbox">
+            <span class="cm-nav-icon"><Heroicon Name="@HeroiconName.ChatBubbleLeftRight" Type="HeroiconType.Outline" /></span>
+            <span class="cm-nav-text">กล่องข้อความ (Inbox)</span>
+            <span class="cm-nav-badge">3</span>
+        </NavLink>
+
+        <NavLink class="cm-nav-link" href="/clinic/appointments">
+            <span class="cm-nav-icon"><Heroicon Name="@HeroiconName.CalendarDays" Type="HeroiconType.Outline" /></span>
+            <span class="cm-nav-text">ตารางนัดหมาย</span>
+        </NavLink>
+    </div>
+
+    <div class="nav-section">
+        <button class="nav-group-toggle" @onclick="ToggleSetupSection">
+            <span class="nav-group-label">การตั้งค่า (Setup)</span>
+            <span class="nav-group-chevron @(isSetupOpen ? "open" : "")">
+                <Heroicon Name="@HeroiconName.ChevronDown" Type="HeroiconType.Mini" />
+            </span>
+        </button>
+
+        <div class="nav-group-items @(isSetupOpen ? "open" : "")">
+            <NavLink class="cm-nav-link" href="/clinic/promotions">
+                <span class="cm-nav-icon"><Heroicon Name="@HeroiconName.Tag" Type="HeroiconType.Outline" /></span>
+                <span class="cm-nav-text">โปรโมชัน</span>
+            </NavLink>
+
+            <NavLink class="cm-nav-link" href="/clinic/ai-chatbot">
+                <span class="cm-nav-icon"><Heroicon Name="@HeroiconName.CpuChip" Type="HeroiconType.Outline" /></span>
+                <span class="cm-nav-text">ตั้งค่า AI Chatbot</span>
+            </NavLink>
+
+            <NavLink class="cm-nav-link" href="/clinic/ai-test">
+                <span class="cm-nav-icon"><Heroicon Name="@HeroiconName.Beaker" Type="HeroiconType.Outline" /></span>
+                <span class="cm-nav-text">ทดสอบ AI (AI Test)</span>
+            </NavLink>
+
+            <NavLink class="cm-nav-link" href="/clinic/setup">
+                <span class="cm-nav-icon"><Heroicon Name="@HeroiconName.Cog6Tooth" Type="HeroiconType.Outline" /></span>
+                <span class="cm-nav-text">ตั้งค่าคลินิก</span>
+            </NavLink>
+
+            <NavLink class="cm-nav-link" href="/clinic/integrations">
+                <span class="cm-nav-icon"><Heroicon Name="@HeroiconName.Link" Type="HeroiconType.Outline" /></span>
+                <span class="cm-nav-text">การเชื่อมต่อช่องทาง</span>
+            </NavLink>
+        </div>
+    </div>
+</nav>
+
+<div class="sidebar-footer">
+    <AuthorizeView>
+        <Authorized>
+            <div class="user-profile">
+                <div class="user-avatar">@(context.User.Identity?.Name?[0].ToString().ToUpper() ?? "U")</div>
+                <div class="user-info">
+                    <p class="user-name">@context.User.Identity?.Name</p>
+                    <p class="user-clinic">Demo Clinic</p>
+                </div>
+            </div>
+            <form action="Account/Logout" method="post" class="logout-form">
+                <AntiforgeryToken />
+                <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                <button type="submit" class="logout-btn" title="ออกจากระบบ">
+                    <Heroicon Name="@HeroiconName.ArrowRightOnRectangle" Type="HeroiconType.Outline" />
+                </button>
+            </form>
+        </Authorized>
+        <NotAuthorized>
+            <NavLink class="cm-nav-link" href="Account/Login">
+                <span class="cm-nav-icon"><Heroicon Name="@HeroiconName.ArrowLeftOnRectangle" Type="HeroiconType.Outline" /></span>
+                <span class="cm-nav-text">เข้าสู่ระบบ</span>
+            </NavLink>
+        </NotAuthorized>
+    </AuthorizeView>
+</div>
+
+@code {
+    private string? currentUrl;
+    private bool isMenuOpen;
+    private bool isSetupOpen = true;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+
+        // Auto-expand setup section if current route is in that section
+        var route = currentUrl?.ToLowerInvariant() ?? "";
+        if (route.Contains("promotions") || route.Contains("ai-chatbot") ||
+            route.Contains("ai-test") || route.Contains("setup") || route.Contains("integrations"))
+        {
+            isSetupOpen = true;
+        }
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        isMenuOpen = false;
+        StateHasChanged();
+    }
+
+    private void ToggleNavigation() => isMenuOpen = !isMenuOpen;
+    private void ToggleSetupSection() => isSetupOpen = !isSetupOpen;
+
+    public void Dispose() => NavigationManager.LocationChanged -= OnLocationChanged;
+}

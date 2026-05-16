@@ -13,6 +13,7 @@ public sealed class AddClinicServiceHandler(
         var service = new ClinicService
         {
             ClinicId = command.ClinicId,
+            BranchId = command.BranchId,
             Name = command.Name.Trim(),
             Category = command.Category.Trim(),
             StartingPrice = command.StartingPrice,

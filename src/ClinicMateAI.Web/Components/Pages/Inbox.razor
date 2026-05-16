@@ -1,195 +1,257 @@
-@page "/inbox"
+@page "/clinic/inbox"
+@layout ClinicLayout
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
+@implements IAsyncDisposable
 
-<PageTitle>Inbox</PageTitle>
+<PageTitle>กล่องข้อความ - ClinicMateAI</PageTitle>
 
-<h1>Inbox</h1>
-
-<div class="mb-3 d-flex gap-2 align-items-end">
-    <div>
-        <label class="form-label" for="clinicSelect">Clinic</label>
-        <select id="clinicSelect" class="form-select" @bind="SelectedClinicIdText" @bind:after="OnClinicChangedAsync" disabled="@IsLoadingClinics">
-            <option value="">Select clinic</option>
-            @foreach (var clinic in Clinics)
+<!-- Filter bar -->
+<div class="inbox-filter-bar">
+    <div class="filter-channels">
+        <button class="filter-btn @(ChannelFilter == "" ? "active" : "")" @onclick='() => SetChannelFilter("")'>ทั้งหมด</button>
+        <button class="filter-btn line @(ChannelFilter == "LINE" ? "active" : "")" @onclick='() => SetChannelFilter("LINE")'>
+            <span class="channel-dot line-dot"></span> LINE
+        </button>
+        <button class="filter-btn fb @(ChannelFilter == "Facebook" ? "active" : "")" @onclick='() => SetChannelFilter("Facebook")'>
+            <span class="channel-dot fb-dot"></span> Facebook
+        </button>
+    </div>
+    <div class="filter-read">
+        <button class="filter-btn @(ReadFilter == "" ? "active" : "")" @onclick='() => SetReadFilter("")'>ทั้งหมด</button>
+        <button class="filter-btn @(ReadFilter == "unread" ? "active" : "")" @onclick='() => SetReadFilter("unread")'>
+            ยังไม่อ่าน
+            @if (TotalUnread > 0)
             {
-                <option value="@clinic.ClinicId.ToString()">@clinic.Name</option>
+                <span class="unread-badge">@TotalUnread</span>
             }
-        </select>
+        </button>
+        <button class="filter-btn @(ReadFilter == "read" ? "active" : "")" @onclick='() => SetReadFilter("read")'>อ่านแล้ว</button>
     </div>
-    <div>
-        <label class="form-label" for="takeInput">Take</label>
-        <input id="takeInput" class="form-control" type="number" min="1" max="200" @bind="Take" disabled="@IsLoadingConversations" />
+    <div class="filter-search">
+        <input class="search-input" type="text" placeholder="🔍 ค้นหาชื่อลูกค้า..." @bind="SearchText" @bind:event="oninput" />
     </div>
-    <button class="btn btn-primary" @onclick="LoadConversationsAsync" disabled="@IsLoadingConversations">Load</button>
-    <button class="btn btn-outline-secondary" @onclick="RefreshSelectedConversationAsync" disabled="@(SelectedConversationId is null || IsLoadingMessages)">Refresh Messages</button>
 </div>
 
 @if (!string.IsNullOrWhiteSpace(Error))
 {
-    <div class="alert alert-danger">@Error</div>
+    <div class="alert alert-danger mb-0">@Error</div>
 }
 
-@if (IsLoadingClinics)
-{
-    <p class="text-muted">Loading clinics...</p>
-}
-
-<div class="row">
-    <div class="col-md-5">
-        <h5>Conversations</h5>
+<!-- 3-column inbox layout -->
+<div class="inbox-layout">
+    <!-- Column 1: Conversation list -->
+    <div class="inbox-conversations">
         @if (IsLoadingConversations)
         {
-            <p class="text-muted">Loading conversations...</p>
+            <div class="inbox-loading">
+                <span class="spinner-border spinner-border-sm text-muted"></span>
+                <span class="text-muted ms-2">กำลังโหลด...</span>
+            </div>
         }
-        else if (Conversations.Count == 0)
+        else if (FilteredConversations.Count == 0)
         {
-            <p class="text-muted">No conversations.</p>
+            <div class="inbox-empty">ไม่มีการสนทนา</div>
         }
         else
         {
-            <div class="list-group">
-                @foreach (var item in Conversations)
+            @foreach (var c in FilteredConversations)
+            {
+                <div class="conv-item @(SelectedConversationId == c.ConversationId ? "selected" : "") @(!c.IsRead ? "unread" : "")"
+                     @onclick="() => SelectConversationAsync(c)">
+                    <div class="conv-header">
+                        <span class="conv-name">@c.CustomerDisplayName</span>
+                        <span class="conv-time">@FormatTime(c.LastMessageAtUtc)</span>
+                    </div>
+                    <div class="conv-meta">
+                        <span class="channel-tag @c.Channel.ToLower()">@c.Channel</span>
+                        @if (!c.IsRead && c.UnreadCount > 0)
+                        {
+                            <span class="unread-count">@c.UnreadCount</span>
+                        }
+                        @if (c.AssignedStaff is not null)
+                        {
+                            <span class="claimed-tag">👤 @c.AssignedStaff</span>
+                        }
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(c.LastMessagePreview))
+                    {
+                        <div class="conv-preview">@c.LastMessagePreview</div>
+                    }
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Column 2: Message thread -->
+    <div class="inbox-thread">
+        @if (SelectedConversation is null)
+        {
+            <div class="thread-empty">
+                <span>เลือกการสนทนาเพื่อดูข้อความ</span>
+            </div>
+        }
+        else
+        {
+            <div class="thread-header">
+                <div class="thread-title">
+                    <strong>@SelectedConversation.CustomerDisplayName</strong>
+                    <span class="channel-tag @SelectedConversation.Channel.ToLower() ms-2">@SelectedConversation.Channel</span>
+                </div>
+                <div class="thread-actions">
+                    @if (SelectedConversation.AssignedStaff is null)
+                    {
+                        <button class="btn-claim" @onclick="ClaimAsync">รับเคส</button>
+                    }
+                    else if (SelectedConversation.AssignedStaff == CurrentStaffName)
+                    {
+                        <span class="claim-mine">คุณรับเคสนี้แล้ว</span>
+                        <button class="btn-release" @onclick="ReleaseAsync">คืนเคส</button>
+                    }
+                    else
+                    {
+                        <span class="claim-other">👤 @SelectedConversation.AssignedStaff</span>
+                        <button class="btn-override" @onclick="() => ShowOverrideConfirm = true">รับต่อ</button>
+                    }
+                </div>
+            </div>
+
+            @if (ShowOverrideConfirm)
+            {
+                <div class="override-confirm">
+                    <span>@SelectedConversation.AssignedStaff กำลังดูแลเคสนี้อยู่ ต้องการรับต่อหรือไม่?</span>
+                    <button class="btn-confirm-override" @onclick="ClaimOverrideAsync">ยืนยัน</button>
+                    <button class="btn-cancel-override" @onclick="() => ShowOverrideConfirm = false">ยกเลิก</button>
+                </div>
+            }
+
+            <div class="thread-messages" id="thread-messages">
+                @if (IsLoadingMessages)
                 {
-                    <button
-                        class="list-group-item list-group-item-action @(SelectedConversationId == item.ConversationId ? "active" : "")"
-                        @onclick="() => SelectConversationAsync(item.ConversationId)">
-                        <div class="d-flex w-100 justify-content-between">
-                            <strong>@item.CustomerDisplayName</strong>
-                            <small>@item.Channel</small>
-                        </div>
-                        <small>@item.ExternalConversationId</small>
-                    </button>
+                    <div class="inbox-loading">
+                        <span class="spinner-border spinner-border-sm text-muted"></span>
+                    </div>
                 }
+                else
+                {
+                    @foreach (var m in Messages)
+                    {
+                        <div class="msg @(m.SenderType == "Customer" ? "msg-customer" : "msg-staff")">
+                            <div class="msg-bubble">@m.Text</div>
+                            <div class="msg-time">@m.SentAtUtc.ToLocalTime().ToString("HH:mm")</div>
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="thread-reply">
+                <textarea class="reply-input" placeholder="พิมพ์ข้อความ..." @bind="ReplyText" rows="3"></textarea>
+                <div class="reply-actions">
+                    @if (SelectedConversation.AiStatus == "DraftReady")
+                    {
+                        <span class="ai-draft-badge">AI Draft พร้อม</span>
+                    }
+                    <button class="btn-send" disabled="@(string.IsNullOrWhiteSpace(ReplyText))" @onclick="SendReplyAsync">ส่ง</button>
+                </div>
             </div>
         }
     </div>
-    <div class="col-md-7">
-        <h5>Messages</h5>
-        @if (IsLoadingMessages)
+
+    <!-- Column 3: Customer panel -->
+    <div class="inbox-customer-panel">
+        @if (SelectedConversation is null)
         {
-            <p class="text-muted">Loading messages...</p>
-        }
-        else if (Messages.Count == 0)
-        {
-            <p class="text-muted">No messages.</p>
+            <div class="panel-empty">เลือกการสนทนา</div>
         }
         else
         {
-            <div class="list-group">
-                @foreach (var message in Messages)
-                {
-                    <div class="list-group-item">
-                        <div class="d-flex w-100 justify-content-between">
-                            <strong>@message.SenderType</strong>
-                            <small>@message.SentAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</small>
-                        </div>
-                        <div>@message.Text</div>
-                    </div>
-                }
+            <div class="panel-section">
+                <div class="panel-avatar">👤</div>
+                <div class="panel-name">@SelectedConversation.CustomerDisplayName</div>
+                <div class="panel-channel channel-tag @SelectedConversation.Channel.ToLower()">@SelectedConversation.Channel</div>
+            </div>
+            <div class="panel-section">
+                <div class="panel-row">
+                    <span class="panel-label">สถานะ</span>
+                    <span class="panel-value">@SelectedConversation.Status</span>
+                </div>
+                <div class="panel-row">
+                    <span class="panel-label">AI</span>
+                    <span class="panel-value ai-status-@SelectedConversation.AiStatus.ToLower()">@GetAiStatusLabel(SelectedConversation.AiStatus)</span>
+                </div>
+            </div>
+            <div class="panel-divider"></div>
+            <div class="panel-section-title">📋 ข้อมูลเพิ่มเติม</div>
+            <div class="panel-section muted">
+                <div class="panel-row"><span class="panel-label">นัดหมาย</span><span class="panel-value">-</span></div>
+                <div class="panel-row"><span class="panel-label">โปรโมชั่น</span><span class="panel-value">-</span></div>
             </div>
         }
     </div>
 </div>
 
 @code {
-    private string SelectedClinicIdText { get; set; } = string.Empty;
-    private int Take { get; set; } = 50;
+    // ---- State ----
+    private string ChannelFilter { get; set; } = "";
+    private string ReadFilter { get; set; } = "";
+    private string SearchText { get; set; } = "";
     private string? Error { get; set; }
-    private Guid? SelectedConversationId { get; set; }
-    private bool IsLoadingClinics { get; set; }
     private bool IsLoadingConversations { get; set; }
     private bool IsLoadingMessages { get; set; }
-    private List<InboxClinicVm> Clinics { get; } = [];
+    private bool ShowOverrideConfirm { get; set; }
+    private Guid? SelectedConversationId { get; set; }
+    private string ReplyText { get; set; } = "";
+
+    // Stub: in production, derive from auth context
+    private string CurrentStaffName => "Staff";
+
     private List<InboxConversationVm> Conversations { get; } = [];
     private List<InboxMessageVm> Messages { get; } = [];
 
+    private InboxConversationVm? SelectedConversation =>
+        Conversations.FirstOrDefault(x => x.ConversationId == SelectedConversationId);
+
+    private List<InboxConversationVm> FilteredConversations => Conversations
+        .Where(c =>
+            (string.IsNullOrEmpty(ChannelFilter) || c.Channel == ChannelFilter) &&
+            (string.IsNullOrEmpty(ReadFilter) ||
+                (ReadFilter == "unread" && !c.IsRead) ||
+                (ReadFilter == "read" && c.IsRead)) &&
+            (string.IsNullOrEmpty(SearchText) ||
+                c.CustomerDisplayName.Contains(SearchText, StringComparison.OrdinalIgnoreCase)))
+        .ToList();
+
+    private int TotalUnread => Conversations.Where(c =>
+        (string.IsNullOrEmpty(ChannelFilter) || c.Channel == ChannelFilter) && !c.IsRead)
+        .Sum(c => c.UnreadCount);
+
+    // ---- Clinic context (uses first clinic for now) ----
+    private Guid ClinicId { get; set; }
+
+    // ---- SignalR ----
+    private HubConnection? _hubConnection;
+
     protected override async Task OnInitializedAsync()
     {
-        await LoadClinicsAsync();
+        await LoadClinicAndConversationsAsync();
+        try { await ConnectSignalRAsync(); } catch { /* SignalR unavailable — polling fallback */ }
     }
 
-    private async Task LoadClinicsAsync()
-    {
-        IsLoadingClinics = true;
-        try
-        {
-            var client = HttpClientFactory.CreateClient();
-            var url = NavigationManager.ToAbsoluteUri("/api/inbox/clinics").ToString();
-            var response = await client.GetAsync(url);
-            if (!response.IsSuccessStatusCode)
-            {
-                Error = $"Failed to load clinics ({(int)response.StatusCode}).";
-                return;
-            }
-
-            var items = await response.Content.ReadFromJsonAsync<List<InboxClinicVm>>();
-            Clinics.Clear();
-            if (items is not null)
-            {
-                Clinics.AddRange(items);
-            }
-
-            if (Clinics.Count > 0 && string.IsNullOrWhiteSpace(SelectedClinicIdText))
-            {
-                SelectedClinicIdText = Clinics[0].ClinicId.ToString();
-                await LoadConversationsAsync();
-            }
-        }
-        finally
-        {
-            IsLoadingClinics = false;
-        }
-    }
-
-    private async Task LoadConversationsAsync()
+    private async Task LoadClinicAndConversationsAsync()
     {
         IsLoadingConversations = true;
         try
         {
-            Error = null;
-            var previousSelection = SelectedConversationId;
-            var previousMessages = Messages.ToList();
-            SelectedConversationId = null;
-            Messages.Clear();
-            Conversations.Clear();
-
-            if (!Guid.TryParse(SelectedClinicIdText, out var clinicId))
-            {
-                Error = "Please select a clinic.";
-                return;
-            }
-
-            if (Take is < 1 or > 200)
-            {
-                Error = "Take must be between 1 and 200.";
-                return;
-            }
-
             var client = HttpClientFactory.CreateClient();
-            var url = NavigationManager.ToAbsoluteUri($"/api/inbox/conversations?clinicId={clinicId}&take={Take}").ToString();
-            var response = await client.GetAsync(url);
-            if (!response.IsSuccessStatusCode)
-            {
-                Error = $"Failed to load conversations ({(int)response.StatusCode}).";
-                return;
-            }
+            var clinicsUrl = NavigationManager.ToAbsoluteUri("/api/inbox/clinics").ToString();
+            var clinicsResp = await client.GetAsync(clinicsUrl);
+            if (!clinicsResp.IsSuccessStatusCode) { Error = "ไม่สามารถโหลดข้อมูลคลินิกได้"; return; }
 
-            var items = await response.Content.ReadFromJsonAsync<List<InboxConversationVm>>();
-            if (items is not null)
-            {
-                Conversations.AddRange(items);
-            }
+            var clinics = await clinicsResp.Content.ReadFromJsonAsync<List<InboxClinicVm>>();
+            if (clinics is null || clinics.Count == 0) { Error = "ไม่พบคลินิก"; return; }
 
-            if (previousSelection is Guid selected && Conversations.Any(x => x.ConversationId == selected))
-            {
-                SelectedConversationId = selected;
-                if (previousMessages.Count > 0)
-                {
-                    Messages.AddRange(previousMessages);
-                }
-                await RefreshSelectedConversationAsync();
-            }
+            ClinicId = clinics[0].ClinicId;
+            await LoadConversationsAsync();
         }
         finally
         {
@@ -197,34 +259,37 @@
         }
     }
 
-    private async Task SelectConversationAsync(Guid conversationId)
+    private async Task LoadConversationsAsync()
     {
+        var client = HttpClientFactory.CreateClient();
+        var url = NavigationManager.ToAbsoluteUri($"/api/inbox/conversations?clinicId={ClinicId}&take=100").ToString();
+        var resp = await client.GetAsync(url);
+        if (!resp.IsSuccessStatusCode) { Error = $"โหลดการสนทนาล้มเหลว ({(int)resp.StatusCode})"; return; }
+
+        var items = await resp.Content.ReadFromJsonAsync<List<InboxConversationVm>>();
+        Conversations.Clear();
+        if (items is not null) Conversations.AddRange(items);
+    }
+
+    private async Task SelectConversationAsync(InboxConversationVm conv)
+    {
+        SelectedConversationId = conv.ConversationId;
+        ShowOverrideConfirm = false;
+        Messages.Clear();
         IsLoadingMessages = true;
+
+        // Mark as read
+        _ = MarkReadAsync(conv.ConversationId);
+
         try
         {
-            if (!Guid.TryParse(SelectedClinicIdText, out var clinicId))
-            {
-                Error = "Please select a clinic.";
-                return;
-            }
-
-            Error = null;
-            SelectedConversationId = conversationId;
-            Messages.Clear();
-
             var client = HttpClientFactory.CreateClient();
-            var url = NavigationManager.ToAbsoluteUri($"/api/inbox/conversations/{conversationId}/messages?clinicId={clinicId}").ToString();
-            var response = await client.GetAsync(url);
-            if (!response.IsSuccessStatusCode)
+            var url = NavigationManager.ToAbsoluteUri($"/api/inbox/conversations/{conv.ConversationId}/messages?clinicId={ClinicId}").ToString();
+            var resp = await client.GetAsync(url);
+            if (resp.IsSuccessStatusCode)
             {
-                Error = $"Failed to load messages ({(int)response.StatusCode}).";
-                return;
-            }
-
-            var items = await response.Content.ReadFromJsonAsync<List<InboxMessageVm>>();
-            if (items is not null)
-            {
-                Messages.AddRange(items);
+                var items = await resp.Content.ReadFromJsonAsync<List<InboxMessageVm>>();
+                if (items is not null) Messages.AddRange(items);
             }
         }
         finally
@@ -233,18 +298,161 @@
         }
     }
 
+    private async Task MarkReadAsync(Guid conversationId)
+    {
+        var c = Conversations.FirstOrDefault(x => x.ConversationId == conversationId);
+        if (c is null || (c.IsRead && c.UnreadCount == 0)) return;
+        c.IsRead = true;
+        c.UnreadCount = 0;
+        StateHasChanged();
+
+        var client = HttpClientFactory.CreateClient();
+        var url = NavigationManager.ToAbsoluteUri($"/api/inbox/conversations/{conversationId}/read?clinicId={ClinicId}").ToString();
+        await client.PostAsync(url, null);
+    }
+
+    private async Task ClaimAsync()
+    {
+        if (SelectedConversationId is null) return;
+        var client = HttpClientFactory.CreateClient();
+        var url = NavigationManager.ToAbsoluteUri($"/api/inbox/conversations/{SelectedConversationId}/claim?clinicId={ClinicId}&staffName={Uri.EscapeDataString(CurrentStaffName)}").ToString();
+        var resp = await client.PostAsync(url, null);
+        if (resp.IsSuccessStatusCode)
+        {
+            var c = Conversations.FirstOrDefault(x => x.ConversationId == SelectedConversationId);
+            if (c is not null) { c.AssignedStaff = CurrentStaffName; }
+        }
+        else if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            var body = await resp.Content.ReadFromJsonAsync<ConflictResponse>();
+            Error = $"เคสนี้ถูกรับโดย {body?.Conflict} แล้ว";
+        }
+    }
+
+    private async Task ClaimOverrideAsync()
+    {
+        ShowOverrideConfirm = false;
+        await ClaimAsync();
+    }
+
+    private async Task ReleaseAsync()
+    {
+        if (SelectedConversationId is null) return;
+        var client = HttpClientFactory.CreateClient();
+        var url = NavigationManager.ToAbsoluteUri($"/api/inbox/conversations/{SelectedConversationId}/release?clinicId={ClinicId}").ToString();
+        await client.PostAsync(url, null);
+        var c = Conversations.FirstOrDefault(x => x.ConversationId == SelectedConversationId);
+        if (c is not null) { c.AssignedStaff = null; }
+    }
+
+    private Task SendReplyAsync()
+    {
+        // TODO: wire to POST /api/inbox/conversations/{id}/reply when implemented
+        ReplyText = "";
+        return Task.CompletedTask;
+    }
+
+    private void SetChannelFilter(string v) { ChannelFilter = v; }
+    private void SetReadFilter(string v) { ReadFilter = v; }
+
+    private static string FormatTime(DateTime utc)
+    {
+        var local = utc.ToLocalTime();
+        var diff = DateTime.Now - local;
+        if (diff.TotalMinutes < 1) return "เมื่อกี้";
+        if (diff.TotalHours < 1) return $"{(int)diff.TotalMinutes} นาทีที่แล้ว";
+        if (diff.TotalDays < 1) return local.ToString("HH:mm");
+        if (diff.TotalDays < 7) return local.ToString("ddd HH:mm");
+        return local.ToString("d MMM");
+    }
+
+    private static string GetAiStatusLabel(string status) => status switch
+    {
+        "AutoReplied" => "ตอบอัตโนมัติ",
+        "DraftReady" => "ร่างพร้อม",
+        "Escalated" => "ส่งต่อแล้ว",
+        _ => "-"
+    };
+
+    // ---- SignalR ----
+    private async Task ConnectSignalRAsync()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/hubs/inbox"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<ConversationUpdatedVm>("ConversationUpdated", evt =>
+        {
+            var existing = Conversations.FirstOrDefault(x => x.ConversationId == evt.ConversationId);
+            if (existing is not null)
+            {
+                existing.IsRead = evt.IsRead;
+                existing.UnreadCount = evt.UnreadCount;
+                existing.Status = evt.Status;
+                existing.AiStatus = evt.AiStatus;
+                existing.AssignedStaff = evt.AssignedStaff;
+                existing.LastMessageAtUtc = evt.LastMessageAtUtc;
+                existing.LastMessagePreview = evt.LastMessagePreview;
+            }
+            else
+            {
+                Conversations.Insert(0, new InboxConversationVm
+                {
+                    ConversationId = evt.ConversationId,
+                    CustomerDisplayName = evt.CustomerDisplayName,
+                    Channel = evt.Channel,
+                    Status = evt.Status,
+                    AiStatus = evt.AiStatus,
+                    IsRead = evt.IsRead,
+                    UnreadCount = evt.UnreadCount,
+                    AssignedStaff = evt.AssignedStaff,
+                    LastMessageAtUtc = evt.LastMessageAtUtc,
+                    LastMessagePreview = evt.LastMessagePreview
+                });
+            }
+            InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On<ConversationClaimedVm>("ConversationClaimed", evt =>
+        {
+            var c = Conversations.FirstOrDefault(x => x.ConversationId == evt.ConversationId);
+            if (c is not null) { c.AssignedStaff = evt.AssignedStaff; c.Status = evt.Status; }
+            InvokeAsync(StateHasChanged);
+        });
+
+        await _hubConnection.StartAsync();
+        if (ClinicId != Guid.Empty)
+            await _hubConnection.InvokeAsync("JoinClinic", ClinicId.ToString());
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+            await _hubConnection.DisposeAsync();
+    }
+
+    // ---- View models ----
+    private sealed class InboxClinicVm
+    {
+        public Guid ClinicId { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
     private sealed class InboxConversationVm
     {
         public Guid ConversationId { get; set; }
         public string Channel { get; set; } = string.Empty;
         public string ExternalConversationId { get; set; } = string.Empty;
         public string CustomerDisplayName { get; set; } = string.Empty;
-    }
-
-    private sealed class InboxClinicVm
-    {
-        public Guid ClinicId { get; set; }
-        public string Name { get; set; } = string.Empty;
+        public string Status { get; set; } = "Open";
+        public string AiStatus { get; set; } = "None";
+        public bool IsRead { get; set; }
+        public int UnreadCount { get; set; }
+        public string? AssignedStaff { get; set; }
+        public DateTime? ClaimedAt { get; set; }
+        public DateTime LastMessageAtUtc { get; set; }
+        public string LastMessagePreview { get; set; } = string.Empty;
     }
 
     private sealed class InboxMessageVm
@@ -254,16 +462,29 @@
         public DateTime SentAtUtc { get; set; }
     }
 
-    private async Task OnClinicChangedAsync()
+    private sealed class ConversationUpdatedVm
     {
-        await LoadConversationsAsync();
+        public Guid ConversationId { get; set; }
+        public string CustomerDisplayName { get; set; } = string.Empty;
+        public string Channel { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string AiStatus { get; set; } = string.Empty;
+        public bool IsRead { get; set; }
+        public int UnreadCount { get; set; }
+        public string? AssignedStaff { get; set; }
+        public DateTime LastMessageAtUtc { get; set; }
+        public string LastMessagePreview { get; set; } = string.Empty;
     }
 
-    private async Task RefreshSelectedConversationAsync()
+    private sealed class ConversationClaimedVm
     {
-        if (SelectedConversationId is Guid conversationId)
-        {
-            await SelectConversationAsync(conversationId);
-        }
+        public Guid ConversationId { get; set; }
+        public string? AssignedStaff { get; set; }
+        public string Status { get; set; } = string.Empty;
+    }
+
+    private sealed class ConflictResponse
+    {
+        public string? Conflict { get; set; }
     }
 }

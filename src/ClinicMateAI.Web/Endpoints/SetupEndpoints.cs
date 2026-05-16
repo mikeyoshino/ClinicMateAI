@@ -30,6 +30,7 @@ public static class SetupEndpoints
 
         endpoints.MapGet("/api/setup/services", async Task<IResult> (
             Guid clinicId,
+            Guid? branchId,
             IGetClinicServicesHandler handler,
             CancellationToken cancellationToken) =>
         {
@@ -41,7 +42,7 @@ public static class SetupEndpoints
                 });
             }
 
-            var services = await handler.HandleAsync(clinicId, cancellationToken);
+            var services = await handler.HandleAsync(clinicId, branchId, cancellationToken);
             return Results.Ok(services);
         });
 
@@ -92,6 +93,7 @@ public static class SetupEndpoints
 
             await handler.HandleAsync(new AddClinicServiceCommand(
                 request.ClinicId,
+                request.BranchId,
                 request.Name,
                 request.Category,
                 request.StartingPrice,
@@ -132,6 +134,7 @@ public static class SetupEndpoints
 
     public sealed record AddClinicServiceRequest(
         Guid ClinicId,
+        Guid? BranchId,
         string Name,
         string Category,
         decimal StartingPrice,

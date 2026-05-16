@@ -10,7 +10,15 @@ public sealed class GetClinicServicesHandler(
         Guid clinicId,
         CancellationToken cancellationToken = default)
     {
-        var services = await clinicServiceRepository.ListByClinicAsync(clinicId, cancellationToken);
+        return await HandleAsync(clinicId, branchId: null, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<SetupClinicServiceDto>> HandleAsync(
+        Guid clinicId,
+        Guid? branchId,
+        CancellationToken cancellationToken = default)
+    {
+        var services = await clinicServiceRepository.ListByClinicAsync(clinicId, branchId, cancellationToken);
         return services
             .Select(x => new SetupClinicServiceDto(
                 x.Id,

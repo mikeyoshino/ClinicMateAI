@@ -1,0 +1,46 @@
+@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
+
+<div class="app-shell">
+    <aside class="app-sidebar">
+        <ClinicNavMenu />
+    </aside>
+
+    <main class="app-main">
+        <header class="app-header">
+            <h1 class="app-title">@GetHeaderTitle()</h1>
+            <div class="app-quota">แพ็กเกจ: Pro Clinic (AI: 450/8000)</div>
+        </header>
+
+        <article class="app-content">
+            @Body
+        </article>
+    </main>
+</div>
+
+<ToastHost />
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">x</a>
+</div>
+
+@code {
+    private string GetHeaderTitle()
+    {
+        var route = NavigationManager.ToBaseRelativePath(NavigationManager.Uri).ToLowerInvariant().Split('?', 2)[0].TrimEnd('/');
+        return route switch
+        {
+            "" or "clinic/dashboard" => "ภาพรวมคลินิกประจำวัน",
+            "clinic/inbox" => "กล่องข้อความรวม",
+            "clinic/appointments" => "ตารางนัดหมาย",
+            "clinic/promotions" => "โปรโมชัน",
+            "clinic/ai-chatbot" => "ตั้งค่า AI Chatbot",
+            "clinic/ai-test" => "ทดสอบ AI",
+            "clinic/setup" => "ตั้งค่าคลินิก",
+            "clinic/integrations" => "การเชื่อมต่อช่องทาง",
+            _ => "ClinicMateAI"
+        };
+    }
+}

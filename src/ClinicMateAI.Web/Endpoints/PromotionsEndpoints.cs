@@ -8,6 +8,7 @@ public static class PromotionsEndpoints
     {
         endpoints.MapGet("/api/promotions/manage", async Task<IResult> (
             Guid clinicId,
+            Guid? branchId,
             IPromotionService promotionService,
             CancellationToken cancellationToken) =>
         {
@@ -19,12 +20,13 @@ public static class PromotionsEndpoints
                 });
             }
 
-            var result = await promotionService.ListByClinicAsync(clinicId, cancellationToken);
+            var result = await promotionService.ListByClinicAsync(clinicId, branchId, cancellationToken);
             return Results.Ok(result);
         });
 
         endpoints.MapGet("/api/promotions/available", async Task<IResult> (
             Guid clinicId,
+            Guid? branchId,
             IGetAvailablePromotionsHandler handler,
             CancellationToken cancellationToken) =>
         {
@@ -37,7 +39,7 @@ public static class PromotionsEndpoints
             }
 
             var result = await handler.HandleAsync(
-                new GetAvailablePromotionsQuery(clinicId),
+                new GetAvailablePromotionsQuery(clinicId, branchId),
                 cancellationToken);
 
             return Results.Ok(result);

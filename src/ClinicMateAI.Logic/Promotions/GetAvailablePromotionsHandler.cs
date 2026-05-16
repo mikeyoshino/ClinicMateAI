@@ -11,7 +11,7 @@ public sealed class GetAvailablePromotionsHandler(
         CancellationToken cancellationToken = default)
     {
         var today = query.Today ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        var promotions = await promotionRepository.ListByClinicAsync(query.ClinicId, cancellationToken);
+        var promotions = await promotionRepository.ListByClinicAsync(query.ClinicId, query.BranchId, cancellationToken);
 
         return promotions
             .Where(x => x.IsAvailableToAi(today))
